@@ -22,13 +22,3 @@ test("collection sell controls require an eligible selection and cannot resell s
  sell.click();assert.equal(calls,0);
  dom.window.close();
 });
-
-test("finish order is available only for settled cards and invokes guarded release",()=>{
- const dom=new JSDOM('<div id="app"></div>');const root=dom.window.document.querySelector<HTMLElement>('#app')!;
- const order={id:'order',state:'complete',cards:[{skuId:'card',disposition:'sold'}]};
- const store=createStore({...initialState(),order,recovery:{kind:'ready',pending:{} as any}});let released=0;
- mount(root,store,{release:()=>released++} as any);
- const button=root.querySelector<HTMLButtonElement>('#finish-order')!;assert.ok(button);assert.equal(button.disabled,false);button.click();assert.equal(released,1);
- store.update(s=>({...s,order:{...order,cards:[{skuId:'card',disposition:'buyback_pending'}]}}));assert.equal(button.disabled,true);
- store.update(s=>({...s,order,busy:true}));assert.equal(button.disabled,true);dom.window.close();
-});

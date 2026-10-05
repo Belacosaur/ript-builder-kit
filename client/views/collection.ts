@@ -2,7 +2,7 @@ import { subscribe, esc, image, money, type Actions } from "./common.js";
 import { canDecide } from "../model.js";
 import type { Store } from "../store.js";
 export function mount(root: HTMLElement, store: Store, actions: Actions) {
-  root.innerHTML = `<div class="section-heading"><div class="eyebrow">YOUR REVEALED CARDS</div><h1>Keep what you love.</h1><p>Keep permanently settles a card into your collector account. Sellback follows a separate signed settlement.</p></div><div id="collection-order" class="panel order"></div><div id="cards" class="card-grid"></div><section class="panel"><div class="toolbar"><button id="sellback">Sell selected cards</button><button id="sell-all" class="secondary">Sell all eligible</button><strong id="sell-total">No cards selected</strong><button id="finish-order" class="secondary" disabled>Finish order &amp; return to packs</button></div><p class="muted">A sold disposition is server evidence. Payout accounting remains a separate verification check.</p></section><section class="panel"><h2>Locally known order history</h2><p>This browser's history is separate from authenticated personal collection.</p><div id="collection-history"></div><button id="read-collection" class="secondary">Load authenticated collection</button><div id="collector-collection"></div></section><section class="panel"><h2>Private scan and identification</h2><p>Select a test JPEG explicitly. Capture identity and SHA256 bind the upload. Identification stays private until an explicit submit-for-sale request.</p><label for="scan-file">Test JPEG</label><input id="scan-file" type="file" accept="image/jpeg"><label for="scan-format">Scan format</label><select id="scan-format"><option value="raw">Raw card</option><option value="slab">Graded slab</option></select><button id="upload-capture">Upload private capture</button></section>`;
+  root.innerHTML = `<div class="section-heading"><div class="eyebrow">YOUR REVEALED CARDS</div><h1>Keep what you love.</h1><p>Keep permanently settles a card into your collector account. Sellback follows a separate signed settlement.</p></div><div id="collection-order" class="panel order"></div><div id="cards" class="card-grid"></div><section class="panel"><div class="toolbar"><button id="sellback">Sell selected cards</button><button id="sell-all" class="secondary">Sell all eligible</button><strong id="sell-total">No cards selected</strong></div><p class="muted">A sold disposition is server evidence. Payout accounting remains a separate verification check.</p></section><section class="panel"><h2>Locally known order history</h2><p>This browser's history is separate from authenticated personal collection.</p><div id="collection-history"></div><button id="read-collection" class="secondary">Load authenticated collection</button><div id="collector-collection"></div></section><section class="panel"><h2>Private scan and identification</h2><p>Select a test JPEG explicitly. Capture identity and SHA256 bind the upload. Identification stays private until an explicit submit-for-sale request.</p><label for="scan-file">Test JPEG</label><input id="scan-file" type="file" accept="image/jpeg"><label for="scan-format">Scan format</label><select id="scan-format"><option value="raw">Raw card</option><option value="slab">Graded slab</option></select><button id="upload-capture">Upload private capture</button></section>`;
   root
     .querySelector("#read-collection")!
     .addEventListener("click", () => actions.readCollection?.());
@@ -14,13 +14,6 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
         root.querySelector<HTMLSelectElement>("#scan-format")!.value as
           "raw" | "slab",
       );
-  });
-  const canFinish = () => {
-    const s = store.get();
-    return !s.busy && s.recovery.kind === "ready" && s.order?.state === "complete" && s.order.cards?.length > 0 && s.order.cards.every((c: any) => ["sold", "kept"].includes(c.disposition));
-  };
-  root.querySelector("#finish-order")!.addEventListener("click", () => {
-    if (canFinish()) actions.release?.();
   });
   const selected = new Set<string>(),
     cards = root.querySelector("#cards")!;
@@ -74,7 +67,6 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
     if (b) actions.load?.(b.dataset.load!);
   });
   return subscribe(store, (s) => {
-    root.querySelector<HTMLButtonElement>("#finish-order")!.disabled = !canFinish();
     const personal = s.collectorCollection;
     const rows = Array.isArray(personal?.items)
       ? personal.items

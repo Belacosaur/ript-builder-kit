@@ -80,7 +80,7 @@ test("explicit purchase cannot overwrite an unresolved or corrupt record", async
     createGachaController(f.ports).open({ packId: "pack", quantity: 1 }),
     /pending_order_exists/,
   );
-  assert.equal(f.calls.length, 0);
+  assert.deepEqual(f.calls, ["read"]);
 });
 test("uncertain create retries identical nonce and survives read interruption", async () => {
   const f = setup(null);
@@ -162,7 +162,7 @@ test("lock acquisition re-reads consent written by another tab", async () => {
     createGachaController(f.ports).open({ packId: "pack", quantity: 1 }),
     /pending_order_exists/,
   );
-  assert.equal(f.calls.length, 0);
+  assert.deepEqual(f.calls, ["read"]);
 });
 
 for (const damaged of ["{broken", JSON.stringify({ version: 99 })])
@@ -210,4 +210,22 @@ test("manual reconciliation works with unavailable storage and no financial lock
   const loaded = await createGachaController(f.ports).load(order.id);
   assert.equal(loaded.id, order.id);
   assert.deepEqual(f.calls, ["read"]);
+});
+
+test("sold cards automatically release saved recovery after reconciliation",async()=>{
+ const f=setup();f.ports.call=async()=>({...order,cards:[{...order.cards[0],disposition:'sold'}]});
+ await createGachaController(f.ports).resume();
+ assert.equal(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])),null);
+});
+test("unsettled sellback retains saved recovery",async()=>{
+ const f=setup();f.ports.call=async()=>({...order,cards:[{...order.cards[0],disposition:'buyback_pending'}]});
+ await createGachaController(f.ports).resume();
+ assert.ok(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])));
+});
+
+test("opening again reconciles a sold prior order before creating a new identity",async()=>{
+ const f=setup();const ops:string[]=[];
+ f.ports.call=async(op:string,_params:any,body:any)=>{ops.push(op);if(op==='read')return {...order,cards:[{...order.cards[0],disposition:'sold'}]};assert.equal(op,'create');return {...order,id:'b'.repeat(64),clientNonce:body.clientNonce};};
+ await createGachaController(f.ports).open({packId:'pack',quantity:1});
+ assert.deepEqual(ops,['read','create']);assert.ok(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])));
 });

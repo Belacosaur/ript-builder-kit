@@ -115,7 +115,17 @@ export function createGachaController(p: GachaPorts) {
       const execute = async () => {
         check();
         if (!readOnly) get();
-        return work(s, check, request, read, get, save, poll);
+        const result = await work(s, check, request, read, get, save, poll);
+        check();
+        const pending = readOnly ? null : get(), resolved = result as any;
+        if (pending && resolved?.state === "complete" && resolved.cards?.length && resolved.cards.every((c: any) => ["sold", "kept"].includes(c.disposition))) {
+          const reconciled = mergeOrder(pending, result, s);
+          if (canReleasePending(reconciled, result)) {
+            removeResolvedConsent(s, reconciled, result, p.storage);
+            p.accept(result);
+          }
+        }
+        return result;
       };
       return readOnly
         ? await execute()
@@ -230,7 +240,11 @@ export function createGachaController(p: GachaPorts) {
   return {
     open: (input: { packId: string; quantity: number }) =>
       run(async (s, check, request, read, get, save, poll) => {
-        if (get()) throw new Error("pending_order_exists");
+        if (get()) {
+          const previous = await read(), pending = get()!;
+          if (previous.state !== "complete" || !previous.cards?.length || !previous.cards.every((c: any) => ["sold", "kept"].includes(c.disposition)) || !canReleasePending(pending, previous)) throw new Error("pending_order_exists");
+          removeResolvedConsent(s, pending, previous, p.storage);
+        }
         if (!p.canOpen(input.packId, input.quantity))
           throw new Error("pack_not_available");
         save({ ...s, ...input, clientNonce: crypto.randomUUID() });

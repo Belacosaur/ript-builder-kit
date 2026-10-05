@@ -36,7 +36,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
     const p = s.catalog?.packs?.find((v: any) => v.id === s.selectedPack),
       eligible = canDraw(p, s.quantity, true);
     root.querySelector<HTMLButtonElement>("#open-pack")!.disabled =
-      s.busy || !eligible || s.recovery.kind !== "absent";
+      s.busy || !eligible || (s.recovery.kind !== "absent" && !(s.recovery.kind === "ready" && s.recovery.pending.orderId === s.order?.id && s.order?.state === "complete" && s.order.cards?.length && s.order.cards.every((c: any) => ["sold", "kept"].includes(c.disposition))));
     root.querySelector("#purchase-total")!.textContent =
       p && Number.isInteger(s.quantity)
         ? "$" + (p.priceUsd * s.quantity).toFixed(2) + " total"
