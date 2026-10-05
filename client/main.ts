@@ -161,6 +161,16 @@ async function observeBuyerBalances(
     throw error;
   }
 }
+async function reconcileSavedRecovery() {
+  const r = store.get().recovery, start = scope();
+  if (r.kind !== "ready" || !r.pending.orderId) return;
+  try {
+    await controller.reconcileSaved();
+  } catch (e) {
+    if (sameScope(start, scope())) store.update(s => ({...s, error: e instanceof Error ? e.message : "saved_order_reconciliation_failed"}));
+  }
+  recovery();
+}
 async function connect() {
   const provider = (window as any).phantom?.solana ?? (window as any).solana;
   if (!provider?.connect || !provider.signTransaction)
@@ -175,6 +185,7 @@ async function connect() {
   provider.on?.("accountChanged", () => invalidateWallet(false));
   provider.on?.("disconnect", () => invalidateWallet(true));
   recovery();
+  await reconcileSavedRecovery();
 }
 function invalidateWallet(disconnect: boolean) {
   revision++;
@@ -247,6 +258,8 @@ async function refresh() {
         throw new Error("catalog_scope_invalid");
       store.update((s) => ({ ...s, catalog }));
       recovery();
+      await reconcileSavedRecovery();
+      check();
       if (env === "sandbox") {
         try {
           const testing = await readTestingStatus(scope(), scope, callTesting);

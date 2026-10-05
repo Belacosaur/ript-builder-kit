@@ -251,6 +251,8 @@ export function createGachaController(p: GachaPorts) {
         return lifecycle(s, check, request, read, get, save, poll);
       }),
 
+    reconcileSaved: () => run(async (_s, _check, _request, read) => read()),
+
     resume: () => run(lifecycle),
 
     load: (id: string) =>

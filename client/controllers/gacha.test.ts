@@ -229,3 +229,9 @@ test("opening again reconciles a sold prior order before creating a new identity
  await createGachaController(f.ports).open({packId:'pack',quantity:1});
  assert.deepEqual(ops,['read','create']);assert.ok(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])));
 });
+
+test("restoring a sold saved order only reads and automatically releases it",async()=>{
+ const f=setup();f.ports.call=async(op:string)=>{f.calls.push(op);assert.equal(op,'read');return {...order,cards:[{...order.cards[0],disposition:'sold'}]};};
+ await (createGachaController(f.ports) as any).reconcileSaved();
+ assert.deepEqual(f.calls,['read']);assert.equal(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])),null);
+});

@@ -47,7 +47,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
     ].includes(s.recovery.kind)
       ? "Recovery blocked. Reconcile the saved record in Runs & Recovery."
       : s.recovery.kind === "ready"
-        ? "A saved order exists. Resume or explicitly release resolved consent." +
+        ? "An unresolved saved order exists. Resume it to reconcile its status." +
           (!eligible
             ? " This pack is paused or unavailable for new purchasing."
             : "")
