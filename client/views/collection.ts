@@ -19,16 +19,20 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
     cards = root.querySelector("#cards")!;
   let last: any;
   const total = () => {
-    const cents = (store.get().order?.cards ?? [])
+    const state = store.get();
+    for (const id of selected)
+      if (!state.order?.cards?.some((c: any) => c.skuId === id && canDecide(state.order, c.disposition))) selected.delete(id);
+    root.querySelector<HTMLButtonElement>("#sellback")!.disabled = state.busy || selected.size === 0;
+    const cents = (state.order?.cards ?? [])
       .filter((c: any) => selected.has(c.skuId))
       .reduce((n: number, c: any) => n + Number(c.buybackCents ?? 0), 0);
     root.querySelector("#sell-total")!.textContent =
-      selected.size + " selected · " + money(cents);
+      selected.size + " selected Â· " + money(cents);
   };
   cards.addEventListener("change", (e) => {
     const input = e.target as HTMLInputElement;
     if (input.dataset.select) {
-      if (input.checked) selected.add(input.dataset.select);
+      if (input.checked && !input.disabled && !store.get().busy) selected.add(input.dataset.select);
       else selected.delete(input.dataset.select);
       total();
     }
@@ -45,7 +49,10 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
   });
   root
     .querySelector("#sellback")!
-    .addEventListener("click", () => actions.sell?.([...selected]));
+    .addEventListener("click", () => {
+      total();
+      if (!root.querySelector<HTMLButtonElement>("#sellback")!.disabled) actions.sell?.([...selected]);
+    });
   root
     .querySelector("#sell-all")!
     .addEventListener("click", () =>
@@ -70,7 +77,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
       ? rows
           .map(
             (row: any) =>
-              `<article class="panel"><span class="badge">${esc(row.identityStatus ?? "Unidentified")}</span><h3>${esc(row.title ?? row.captureId ?? row.id)}</h3><p>${esc(row.setName ?? "")} ${esc(row.cardNumber ?? "")} · ${esc(row.scanFormat ?? "")}</p><p>Recognition: ${esc(row.jobStatus ?? "Unobserved")} · revision ${esc(row.revision)} · metadata ${esc(row.metadataVersion)}</p><p>${row.valueCents != null ? money(row.valueCents) : "Value unverified"} · ${esc(row.pricingStatus ?? "Pricing pending")}</p><details><summary>Safe record</summary><pre>${esc(JSON.stringify(row, null, 2))}</pre></details></article>`,
+              `<article class="panel"><span class="badge">${esc(row.identityStatus ?? "Unidentified")}</span><h3>${esc(row.title ?? row.captureId ?? row.id)}</h3><p>${esc(row.setName ?? "")} ${esc(row.cardNumber ?? "")} Â· ${esc(row.scanFormat ?? "")}</p><p>Recognition: ${esc(row.jobStatus ?? "Unobserved")} Â· revision ${esc(row.revision)} Â· metadata ${esc(row.metadataVersion)}</p><p>${row.valueCents != null ? money(row.valueCents) : "Value unverified"} Â· ${esc(row.pricingStatus ?? "Pricing pending")}</p><details><summary>Safe record</summary><pre>${esc(JSON.stringify(row, null, 2))}</pre></details></article>`,
           )
           .join("")
       : '<p class="muted">' +
@@ -79,7 +86,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
           : "Authenticated collection not loaded. Configure an explicit collector session.") +
         "</p>";
     root.querySelector("#collection-order")!.textContent = s.order
-      ? "Order " + s.order.id + " · " + s.order.state
+      ? "Order " + s.order.id + " Â· " + s.order.state
       : "No order loaded. Open a pack or resume an existing order.";
     if (last !== s.order) {
       last = s.order;
@@ -88,7 +95,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
         ? s.order.cards
             .map(
               (c: any) =>
-                `<article class="collector-card"><div class="card-art">${image(c.imageUrl, c.title ?? c.name ?? "Revealed card")}</div><div class="card-details"><span class="badge">${esc(c.disposition)}</span><h2>${esc(c.title ?? c.name ?? c.skuId)}</h2><p>${esc(c.setName)} ${esc(c.cardNumber)} · ${esc(c.grade ?? "Ungraded")}</p><dl><dt>Insured value</dt><dd>${money(c.insuredCents)}</dd><dt>Sellback</dt><dd>${money(c.buybackCents)}</dd></dl><label><input type="checkbox" data-select="${esc(c.skuId)}" ${canDecide(s.order, c.disposition) ? "" : "disabled"}> Select for sellback</label><button data-keep="${esc(c.skuId)}" ${canDecide(s.order, c.disposition) && !s.busy ? "" : "disabled"} class="secondary">Keep permanently</button></div></article>`,
+                `<article class="collector-card"><div class="card-art">${image(c.imageUrl, c.title ?? c.name ?? "Revealed card")}</div><div class="card-details"><span class="badge">${esc(c.disposition)}</span><h2>${esc(c.title ?? c.name ?? c.skuId)}</h2><p>${esc(c.setName)} ${esc(c.cardNumber)} Â· ${esc(c.grade ?? "Ungraded")}</p><dl><dt>Insured value</dt><dd>${money(c.insuredCents)}</dd><dt>Sellback</dt><dd>${money(c.buybackCents)}</dd></dl>${c.disposition === "sold" ? '<p class="muted">Already sold according to this order. Keep and further sellback are unavailable. Verify the settlement receipt for payout evidence.</p>' : ""}<label><input type="checkbox" data-select="${esc(c.skuId)}" ${canDecide(s.order, c.disposition) ? "" : "disabled"}> Select for sellback</label><button data-keep="${esc(c.skuId)}" ${canDecide(s.order, c.disposition) && !s.busy ? "" : "disabled"} class="secondary">Keep permanently</button></div></article>`,
             )
             .join("")
         : '<div class="empty"><h2>Your cards will appear here.</h2><p>Complete orders with payment evidence reveal cards.</p></div>';
@@ -101,8 +108,9 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
           (c: any) =>
             c.skuId === b.dataset.keep && canDecide(s.order, c.disposition),
         );
-    root.querySelector<HTMLButtonElement>("#sellback")!.disabled =
-      s.busy || !s.order;
+    for (const input of cards.querySelectorAll<HTMLInputElement>("[data-select]"))
+      input.disabled = s.busy || !s.order?.cards?.some((c: any) => c.skuId === input.dataset.select && canDecide(s.order, c.disposition));
+    total();
     root.querySelector<HTMLButtonElement>("#sell-all")!.disabled =
       s.busy ||
       !s.order?.cards?.some((c: any) => canDecide(s.order, c.disposition));
@@ -110,7 +118,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
       s.history
         .map(
           (o) =>
-            `<button data-load="${esc(o.id)}" class="history-row"><strong>${esc(o.packId)} · ${esc(o.quantity)} card(s)</strong><span>${esc(o.state)} · ${esc(o.observedAt)}</span><span class="mono">${esc(o.id)}</span></button>`,
+            `<button data-load="${esc(o.id)}" class="history-row"><strong>${esc(o.packId)} Â· ${esc(o.quantity)} card(s)</strong><span>${esc(o.state)} Â· ${esc(o.observedAt)}</span><span class="mono">${esc(o.id)}</span></button>`,
         )
         .join("") || '<p class="muted">No history for this context.</p>';
   });
