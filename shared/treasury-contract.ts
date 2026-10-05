@@ -78,7 +78,7 @@ export const treasuryOperations: OperationDefinition[] = [
   method: "GET",
   pathTemplate: "/v1/gacha/treasury" + (id === "activity" ? "/activity" : ""),
   effect: "read",
-  description: "Local additive treasury read; deployment not verified",
+  description: "Credential-bound treasury read; see docs/builders/deployment.md for deployment verification",
   example: {
     params: id === "activity" ? { limit: "20" } : {},
     body: undefined,

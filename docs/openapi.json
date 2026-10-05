@@ -9503,7 +9503,7 @@
         "tags": [
           "treasury"
         ],
-        "summary": "Local additive treasury read; deployment not verified",
+        "summary": "Credential-bound treasury read; see docs/builders/deployment.md for deployment verification",
         "description": "Runtime validation and owner/service authorization apply; fixture examples are not real resources.",
         "security": [
           {
@@ -9611,7 +9611,7 @@
         "tags": [
           "treasury"
         ],
-        "summary": "Local additive treasury read; deployment not verified",
+        "summary": "Credential-bound treasury read; see docs/builders/deployment.md for deployment verification",
         "description": "Runtime validation and owner/service authorization apply; fixture examples are not real resources.",
         "security": [
           {
@@ -9719,7 +9719,7 @@
         "tags": [
           "treasury"
         ],
-        "summary": "Local additive treasury read; deployment not verified",
+        "summary": "Credential-bound treasury read; see docs/builders/deployment.md for deployment verification",
         "description": "Runtime validation and owner/service authorization apply; fixture examples are not real resources.",
         "security": [
           {
@@ -9850,7 +9850,7 @@
         "tags": [
           "treasury"
         ],
-        "summary": "Local additive treasury read; deployment not verified",
+        "summary": "Credential-bound treasury read; see docs/builders/deployment.md for deployment verification",
         "description": "Runtime validation and owner/service authorization apply; fixture examples are not real resources.",
         "security": [
           {
