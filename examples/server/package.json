@@ -1,0 +1,1 @@
+{"name":"ript-treasury-server-example","private":true,"type":"module","engines":{"node":">=22"},"scripts":{"start":"node --env-file-if-exists=.env server.mjs"}}

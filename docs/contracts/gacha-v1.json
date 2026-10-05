@@ -1,0 +1,243 @@
+{
+  "contractVersion": "gacha-v1",
+  "source": "Inspected partner-opening.ts; receipts locally added, not deployed",
+  "operations": [
+    {
+      "id": "receipts",
+      "service": "gacha",
+      "method": "GET",
+      "pathTemplate": "/v1/gacha/orders/:id/receipts?wallet=:wallet",
+      "effect": "read",
+      "docs": "docs/backend-capability-gaps.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": null
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "packs",
+      "service": "gacha",
+      "method": "GET",
+      "pathTemplate": "/v1/gacha/packs",
+      "effect": "read",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {},
+        "body": null
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "create",
+      "service": "gacha",
+      "method": "POST",
+      "pathTemplate": "/v1/gacha/orders",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {},
+        "body": {
+          "wallet": "BUYER_PUBLIC_KEY",
+          "partner_id": "PARTNER_UUID",
+          "packId": "PACK_ID",
+          "quantity": 1,
+          "clientNonce": "DURABLE_CLIENT_NONCE"
+        }
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "read",
+      "service": "gacha",
+      "method": "GET",
+      "pathTemplate": "/v1/gacha/orders/:id?wallet=:wallet",
+      "effect": "read",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": null
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "proof",
+      "service": "gacha",
+      "method": "GET",
+      "pathTemplate": "/v1/gacha/orders/:id/proof?wallet=:wallet",
+      "effect": "read",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": null
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "payment",
+      "service": "gacha",
+      "method": "POST",
+      "pathTemplate": "/v1/gacha/orders/:id/payment",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": {
+          "wallet": "BUYER_PUBLIC_KEY"
+        }
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "submit",
+      "service": "gacha",
+      "method": "POST",
+      "pathTemplate": "/v1/gacha/orders/:id/submit",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": {
+          "wallet": "BUYER_PUBLIC_KEY",
+          "intentId": "INTENT_UUID",
+          "transaction": "ORIGINAL_SIGNED_BASE64"
+        }
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "sellbackPrepare",
+      "service": "gacha",
+      "method": "POST",
+      "pathTemplate": "/v1/gacha/orders/:id/sellback/prepare",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": {
+          "wallet": "BUYER_PUBLIC_KEY",
+          "skuIds": [
+            "CARD_UUID"
+          ]
+        }
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "sellbackSubmit",
+      "service": "gacha",
+      "method": "POST",
+      "pathTemplate": "/v1/gacha/orders/:id/sellback/submit",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY"
+        },
+        "body": {
+          "wallet": "BUYER_PUBLIC_KEY",
+          "intentId": "INTENT_UUID",
+          "transaction": "ORIGINAL_SIGNED_BASE64"
+        }
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "keep",
+      "service": "gacha",
+      "method": "POST",
+      "pathTemplate": "/v1/gacha/orders/:id/cards/:skuId/keep",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "wallet": "BUYER_PUBLIC_KEY",
+          "skuId": "CARD_UUID"
+        },
+        "body": {
+          "wallet": "BUYER_PUBLIC_KEY"
+        }
+      },
+      "schema": "shared/contract.ts#validateBody"
+    },
+    {
+      "id": "status",
+      "service": "testing",
+      "method": "GET",
+      "pathTemplate": "/sandbox/v1/gacha/testing/status",
+      "effect": "read",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {},
+        "body": null
+      },
+      "schema": "shared/testing.ts#resolveTestingOperation"
+    },
+    {
+      "id": "operation",
+      "service": "testing",
+      "method": "GET",
+      "pathTemplate": "/sandbox/v1/gacha/testing/operations/:id",
+      "effect": "read",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {
+          "id": "OPERATION_UUID"
+        },
+        "body": null
+      },
+      "schema": "shared/testing.ts#resolveTestingOperation"
+    },
+    {
+      "id": "wallet-funds",
+      "service": "testing",
+      "method": "POST",
+      "pathTemplate": "/sandbox/v1/gacha/testing/wallet-funds",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {},
+        "body": {
+          "requestId": "DURABLE_REQUEST_ID",
+          "wallet": "BUYER_PUBLIC_KEY"
+        }
+      },
+      "schema": "shared/testing.ts#resolveTestingOperation"
+    },
+    {
+      "id": "treasury-refill",
+      "service": "testing",
+      "method": "POST",
+      "pathTemplate": "/sandbox/v1/gacha/testing/treasury-refill",
+      "effect": "mutation",
+      "docs": "docs/client-example.md",
+      "example": {
+        "params": {},
+        "body": {
+          "requestId": "DURABLE_REQUEST_ID"
+        }
+      },
+      "schema": "shared/testing.ts#resolveTestingOperation"
+    }
+  ]
+}

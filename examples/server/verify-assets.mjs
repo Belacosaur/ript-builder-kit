@@ -1,0 +1,4 @@
+import assert from 'node:assert/strict';
+const origin=process.env.EXAMPLE_URL??'http://127.0.0.1:4320';const html=await fetch(origin).then(r=>r.text());assert.ok(html.includes('importmap'));
+const visited=new Set();async function check(path){if(visited.has(path))return;visited.add(path);const r=await fetch(origin+path);assert.equal(r.status,200,path);const source=await r.text();for(const m of source.matchAll(/(?:from\s*|import\s*)["'](\.[^"']+)["']/g)){const child=new URL(m[1],origin+path);await check(child.pathname);}}
+await check('/sdk/packages/sdk/src/browser.js');assert.equal((await fetch(origin+'/api/services/treasury/get',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({environment:'live',params:{}})})).status,400);console.log('Independent browser import graph and environment refusal passed:',visited.size,'modules');

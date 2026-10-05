@@ -1,0 +1,8 @@
+{
+  "source": "Inspected backend 5 October 2026",
+  "contractVersion": "partner-v1",
+  "auth": "public partner-session; explicit owner Bearer for draft/treasury",
+  "publicRoute": "/sandbox/opening/partner-session or /opening/partner-session",
+  "draft": "/program/me/preview?vendor=...&environment=...; readOnly true",
+  "iframe": "parentOrigin must be accepted by upstream door policy; do not treat draft preview as purchasable"
+}

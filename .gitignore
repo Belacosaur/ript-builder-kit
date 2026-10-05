@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.private/
+.superpowers/
+local-traces/
+
+packages/sdk/dist/
+*.tgz
+
+# Generated local evidence and account metadata
+docs/account-receipt.json
+docs/verification.json
+docs/releases/
+*.log

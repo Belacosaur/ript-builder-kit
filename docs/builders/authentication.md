@@ -1,0 +1,7 @@
+# Authentication boundaries
+
+`createRiptServerClient` requires an explicit HTTPS root `baseUrl` and `environment`. Its `credentials` object supports `gachaKey`, `inventoryKey`, `collectorSession` and `partnerSession`. Each service selects its own credential; there is no substitution. Sandbox/live key prefixes are checked. Redirects are refused. Keep credentials on an authenticated application server. Dashboard users still require your own authorization.
+
+Gacha, testing and safe treasury reads use the partner/environment-bound Gacha key. Inventory and fulfilment use the Inventory key. Collector uses its collector session. Owner management, supplier and private partner operations use the owner partner session. Public partner session discovery uses no bearer credential. Existing keys do not promise arbitrary fine-grained read-only scopes: a key accepted for reads may also authorize existing mutations upstream.
+
+`createRiptBrowserClient` takes no credentials, accepts only a same-origin proxy path and refuses owner mutations. Owner credential issuance returns sensitive material through the server SDK; handle it privately. Owner revocation, pack configuration and funding preparation are explicit authorized owner actions. Funding preparation returns an unsigned transaction; wallet signing and submission remain separate. Existing `/program/me/treasury` GET may provision/update lifecycle and must not replace the new pure treasury reads.

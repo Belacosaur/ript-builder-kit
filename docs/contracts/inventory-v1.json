@@ -1,0 +1,15 @@
+{
+  "contractVersion": "inventory-v1",
+  "source": "inventory-exchange.ts and report serializers, inspected 5 October 2026",
+  "namespace": "rk_test/rk_live, no sandbox route prefix",
+  "idempotency": "draw/pack require stable Idempotency-Key <=128 chars; same exact request across retry",
+  "limits": {
+    "catalog": 500,
+    "skuStatus": 200,
+    "packCeiling": 500,
+    "reports": 100
+  },
+  "reveal": "operation.state must be committed",
+  "mutations": "disabled until matching server flag explicitly set",
+  "reportExport": "bounded upstream JSON/CSV; reports retain integer cents"
+}

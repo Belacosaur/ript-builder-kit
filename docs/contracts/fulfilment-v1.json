@@ -1,0 +1,8 @@
+{
+  "source": "Inspected backend 5 October 2026",
+  "contractVersion": "fulfilment-v1",
+  "auth": "separate Inventory key",
+  "route": "/v1/inventory/claims/:id/fulfill",
+  "guard": "Sandbox physical shipment refused. Live requires mutation flag plus explicit approved non-synthetic claim allowlist. No real shipment is issued for testing.",
+  "operation": "Read supported /v1/inventory/operations/:id; uncertainty retains claim identity"
+}

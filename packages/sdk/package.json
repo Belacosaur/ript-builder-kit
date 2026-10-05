@@ -1,0 +1,35 @@
+{
+  "name": "@ript/sdk",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Small API-only RIPT integration SDK",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/packages/sdk/src/index.d.ts",
+      "import": "./dist/packages/sdk/src/index.js"
+    },
+    "./server": {
+      "types": "./dist/packages/sdk/src/server.d.ts",
+      "import": "./dist/packages/sdk/src/server.js"
+    },
+    "./browser": {
+      "types": "./dist/packages/sdk/src/browser.d.ts",
+      "import": "./dist/packages/sdk/src/browser.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Belacosaur/ript-builder-kit.git"
+  }
+}

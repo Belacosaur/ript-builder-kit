@@ -1,0 +1,7 @@
+{
+  "source": "Inspected backend 5 October 2026",
+  "contractVersion": "supplier-v1",
+  "auth": "explicit partner Bearer, user-owned /partners/me/skus",
+  "reports": "Profile/supply payouts are account resource; Inventory claims/ledger/reports have separate key scope",
+  "mutation": "Payout release/provisioning excluded"
+}

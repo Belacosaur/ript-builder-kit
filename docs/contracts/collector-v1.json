@@ -1,0 +1,23 @@
+{
+  "source": "personal-collection.ts + account/wallets.ts, inspected 5 October 2026",
+  "auth": "explicit collector Bearer session",
+  "namespace": "Account-scoped, no invented /sandbox prefix",
+  "link": "challenge -> signMessage -> verify -> read exact verified pubkey",
+  "capture": {
+    "captureId": "1..180 chars",
+    "revision": "positive integer",
+    "frontSha256": "64 lowercase hex",
+    "scanFormat": [
+      "raw",
+      "slab"
+    ]
+  },
+  "photos": {
+    "bytesMax": 26214400,
+    "content": "JPEG",
+    "destinations": "HTTPS *.r2.cloudflarestorage.com only",
+    "expiry": "server expiresIn, no exported private URLs"
+  },
+  "submit": "explicit revision + confirmed:true; no automatic public supply",
+  "realAcceptance": "blocked without dedicated collector session and user-selected test JPEG"
+}

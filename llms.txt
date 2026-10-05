@@ -1,0 +1,12 @@
+# Ript builder kit
+
+Start with docs/builders/quickstart.md and docs/builders/ai-instructions.md. The locally packable @ript/sdk is not published to npm. Install the release tarball. Supply your own explicit API origin, environment and matching server credential; no existing project is required.
+
+- docs/openapi.json: OpenAPI 3.1 supported upstream paths, authentication and request schemas
+- docs/builders/authentication.md: credential boundaries and owner actions
+- docs/builders/treasury.md: exact amounts and bounded finalized observations
+- docs/builders/recovery.md: durable identities and uncertain outcomes
+- docs/builders/capabilities.md: exported operations and deployment limits
+- examples/server/README.md: independent framework-free dashboard
+
+Never treat missing observations as zero or readiness. Live is an API environment; read actual chain/mint metadata. Aggregator is paused. Local tests do not establish deployed acceptance.

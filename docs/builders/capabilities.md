@@ -1,0 +1,11 @@
+# Supported SDK capabilities
+
+Both clients expose `.request(service, operation, params, body, options)` for the registry below, subject to authorization and mutation guards. Named methods: `gacha.packs`, `gacha.orders.create/get/payment/submit/proof/receipts/keep/prepareSellback/submitSellback`; `treasury.get`, `treasury.activity.list`, `treasury.prepareFunding`; `inventory.catalog/ledger/claims/operation/draw/pack/preview/buyback`, `inventory.reports.list`; `testing.status/operation/requestWalletFunds/requestTreasuryRefill`; `management.credentials.list/issue/revoke`, `management.packs.configure`; `collector.wallets`; `partner.profile`. Collector/partner/supplier/fulfilment also expose their namespace `.request`.
+
+Server entry additionally exposes `executeRaw(validatedRequest,options)` for existing fixed application proxies; it preserves upstream responses without automatic retries. Browser owner mutations are refused. Root/server/browser exports share public types and `RiptError`; no Solana runtime or wallet signing is bundled.
+
+Treasury snapshot/activity and latest Gacha receipts are local backend additions, not a deployed acceptance claim. Existing owner authorization gates remain unchanged and require authenticated integration verification. Testing works only in sandbox; physical fulfilment prepare refuses sandbox and requires approved real fixtures in live. Aggregator remains paused. OpenAPI documents upstream paths; `/api/gacha/:operation`, `/api/testing/:operation`, `/api/services/:service/:operation` are application proxy paths, not upstream APIs. No complete history, reserved balance or withdrawal method is offered.
+
+The generated OpenAPI `x-sdk-operations` lists every supported operation/alias. Response schemas beyond treasury are intentionally unspecified where the existing API has not published a stable DTO; use known SDK types and the service's own documentation, rather than inventing response fields.
+
+Inventory `reportExport` returns `{contentType, content, source:"api"}` through both SDK clients for JSON and CSV. `content` is the original textual report, not a parsed JSON DTO; parse it only when its content type/format is JSON. The upstream API itself serves the corresponding JSON or CSV media.

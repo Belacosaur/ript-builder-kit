@@ -1,0 +1,51 @@
+{
+  "name": "ript-builder-kit",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx server/index.ts",
+    "build": "npm run build:sdk && tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "test": "npm run build && tsx --test shared/*.test.ts server/*.test.ts client/*.test.ts client/controllers/*.test.ts scripts/*.test.ts client/services/*.test.ts packages/sdk/src/*.test.ts",
+    "setup-account": "tsx scripts/setup-account.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "test:unit": "npm run build && tsx --test shared/*.test.ts server/*.test.ts client/*.test.ts client/controllers/*.test.ts scripts/*.test.ts client/services/*.test.ts",
+    "test:ui": "npm run build && tsx --test client/ui.test.ts client/lifecycle.ui.test.ts client/shell.test.ts",
+    "check:readiness": "tsx scripts/readiness.ts",
+    "acceptance:verify": "tsx scripts/verify-acceptance.ts",
+    "build:sdk": "tsc -p packages/sdk/tsconfig.build.json",
+    "build:openapi": "tsx scripts/build-openapi.ts"
+  },
+  "dependencies": {
+    "@fastify/static": "^10.1.5",
+    "@solana/web3.js": "^1.99.0",
+    "fastify": "^5.12.5"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^26.6.4",
+    "jsdom": "^30.1.1",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.2",
+    "ajv": "^8.20.0"
+  },
+  "overrides": {
+    "@solana/web3.js": {
+      "jayson": "5.0.0"
+    }
+  },
+  "workspaces": [
+    "packages/sdk"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Belacosaur/ript-builder-kit.git"
+  }
+}

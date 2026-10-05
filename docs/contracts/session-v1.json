@@ -1,0 +1,8 @@
+{
+  "source": "src/auth/session-user.ts + auth/session/present-token.ts",
+  "authentication": "Authorization: Bearer <explicit session token>",
+  "collector": "COLLECTOR_SESSION_TOKEN",
+  "partner/supplier": "PARTNER_SESSION_TOKEN",
+  "ownerSetupAccountReuse": false,
+  "namespace": "Account-resource routes are not sandbox-prefixed"
+}

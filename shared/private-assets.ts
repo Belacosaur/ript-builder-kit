@@ -1,0 +1,1 @@
+export function privateAssetUrl(value:unknown):string {if(typeof value!=='string'||value.length>8192)throw new Error('private_asset_destination_invalid');const url=new URL(value);if(url.protocol!=='https:'||url.username||url.password||url.port||!url.hostname.endsWith('.r2.cloudflarestorage.com'))throw new Error('private_asset_destination_invalid');return url.href;}
