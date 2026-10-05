@@ -116,3 +116,16 @@ test("network metadata is a fixed public read with no key", async () => {
   await app.close();
 });
 test('public signed-payment status survives credential redaction',()=>{assert.deepEqual(redact({hasSignedPayment:true,transaction:'secret-bytes',session:'secret'}),{hasSignedPayment:true,transaction:'[redacted]',session:'[redacted]'});});
+
+test("top-level page navigation accepts cross-site metadata while API and iframe requests remain blocked",async()=>{
+ let calls=0;const app=createApp(config,async()=>{calls++;return new Response('{}');});app.get('/',async()=>'<html>App</html>');
+ try {
+ const headers={'sec-fetch-site':'cross-site','sec-fetch-mode':'navigate','sec-fetch-dest':'document'};
+ assert.equal((await app.inject({method:'GET',url:'/',headers})).statusCode,200);
+ assert.equal((await app.inject({method:'GET',url:'/api/config',headers})).statusCode,403);
+ assert.equal((await app.inject({method:'GET',url:'/',headers:{...headers,'sec-fetch-dest':'iframe'}})).statusCode,403);
+ assert.equal((await app.inject({method:'POST',url:'/api/gacha/packs',headers,payload:{environment:'sandbox',params:{}}})).statusCode,403);
+ assert.equal((await app.inject({method:'GET',url:'/',headers:{...headers,origin:'https://foreign.example'}})).statusCode,403);
+ assert.equal(calls,0);
+ }finally{await app.close();}
+});

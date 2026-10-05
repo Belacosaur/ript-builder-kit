@@ -21,7 +21,9 @@ export function createApp(config: Config, upstreamFetch: typeof fetch = fetch) {
     const origin = req.headers.origin;
     if (origin && origin !== "http://" + host)
       return reply.code(403).send({ error: "same_origin_required" });
-    if (req.headers["sec-fetch-site"] === "cross-site")
+    const pageNavigation = req.method === "GET" && req.url === "/" &&
+      req.headers["sec-fetch-mode"] === "navigate" && req.headers["sec-fetch-dest"] === "document";
+    if (req.headers["sec-fetch-site"] === "cross-site" && !pageNavigation)
       return reply.code(403).send({ error: "same_origin_required" });
   });
   app.get("/api/config", async () => publicConfig(config));
