@@ -6,6 +6,7 @@ import {
   mergeOrder,
   validateOrder,
   canReleasePending,
+  canAutoReleasePending,
   removeResolvedConsent,
   recoverExpiredSellback,
   sameScope,
@@ -118,7 +119,7 @@ export function createGachaController(p: GachaPorts) {
         const result = await work(s, check, request, read, get, save, poll);
         check();
         const pending = readOnly ? null : get(), resolved = result as any;
-        if (pending && resolved?.state === "complete" && resolved.cards?.length && resolved.cards.every((c: any) => ["sold", "kept"].includes(c.disposition))) {
+        if (canAutoReleasePending(pending, resolved)) {
           const reconciled = mergeOrder(pending, result, s);
           if (canReleasePending(reconciled, result)) {
             removeResolvedConsent(s, reconciled, result, p.storage);
@@ -170,6 +171,7 @@ export function createGachaController(p: GachaPorts) {
 
     while (order.state !== "complete") {
       check();
+      if (order.state === "expired" && canAutoReleasePending(get(), order)) return order;
       if (["expired", "refunded", "failed"].includes(order.state))
         throw new Error("order_" + order.state);
       pending = get()!;
@@ -242,7 +244,7 @@ export function createGachaController(p: GachaPorts) {
       run(async (s, check, request, read, get, save, poll) => {
         if (get()) {
           const previous = await read(), pending = get()!;
-          if (previous.state !== "complete" || !previous.cards?.length || !previous.cards.every((c: any) => ["sold", "kept"].includes(c.disposition)) || !canReleasePending(pending, previous)) throw new Error("pending_order_exists");
+          if (!canAutoReleasePending(pending, previous)) throw new Error("pending_order_exists");
           removeResolvedConsent(s, pending, previous, p.storage);
         }
         if (!p.canOpen(input.packId, input.quantity))

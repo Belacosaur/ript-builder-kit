@@ -194,6 +194,12 @@ export function canReleasePending(pending: Pending | null, order: any) {
       (order.state === "refunded" && !!order.refundSignature))
   );
 }
+/** Only authoritative terminal evidence can release a browser recovery blocker. */
+export function canAutoReleasePending(pending: Pending | null, order: any) {
+  if (!pending || !order || !canReleasePending(reconcileSellback(pending, order), order)) return false;
+  return (order.state === "expired" && order.safeToRetry === true) ||
+    (order.state === "complete" && order.cards?.length > 0 && order.cards.every((c: any) => ["sold", "kept"].includes(c.disposition)));
+}
 export async function recoverExpiredSellback(
   pending: Pending,
   error: unknown,

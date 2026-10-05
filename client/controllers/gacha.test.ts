@@ -235,3 +235,14 @@ test("restoring a sold saved order only reads and automatically releases it",asy
  await (createGachaController(f.ports) as any).reconcileSaved();
  assert.deepEqual(f.calls,['read']);assert.equal(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])),null);
 });
+
+for(const safeToRetry of [true,false])test(`expired restore releases only when backend confirms safeToRetry=${safeToRetry}`,async()=>{
+ const f=setup();f.ports.call=async(op:string)=>{assert.equal(op,'read');return {...order,state:'expired',safeToRetry,paymentSignature:null,cards:[]};};
+ await createGachaController(f.ports).reconcileSaved();
+ const saved=f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain]));assert.equal(saved===null,safeToRetry);
+});
+
+test("resume of a safely expired order clears recovery without payment or resubmission",async()=>{
+ const f=setup();f.ports.call=async(op:string)=>{f.calls.push(op);assert.equal(op,'read');return {...order,state:'expired',safeToRetry:true,paymentSignature:null,cards:[]};};
+ await createGachaController(f.ports).resume();assert.deepEqual(f.calls,['read']);assert.equal(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])),null);
+});

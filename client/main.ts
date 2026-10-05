@@ -543,8 +543,8 @@ const actions: Actions = {
     }),
   resume: () =>
     void action(async () => {
-      await controller.resume();
-      store.update((s) => ({ ...s, view: "collection" }));
+      const order = await controller.resume();
+      store.update((s) => ({ ...s, view: order.state === "complete" ? "collection" : "gacha" }));
     }),
   load: (id) => void action(() => controller.load(id)),
   release: () =>
