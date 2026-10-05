@@ -2,7 +2,7 @@
 
 The SDK and reference client are integrations with an independently operated Ript API. This repository does not contain or deploy the backend.
 
-Treasury snapshot/activity and Gacha receipts require corresponding API support. They are implemented in separate backend work but deployed acceptance remains unverified. A missing route is unavailable, never zero balance or successful settlement.
+Treasury snapshot/activity and Gacha receipts require corresponding API support. These routes are deployed on the Ript API; see builders/deployment.md for the bounded read-only verification. Paid settlement acceptance remains unverified. A missing route is unavailable, never zero balance or successful settlement.
 
 Receipts expose latest sellback evidence with `historyComplete:false`; no complete historical receipt archive is promised. Chain activity is a bounded finalized observation feed, not a business ledger.
 

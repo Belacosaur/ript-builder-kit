@@ -43,7 +43,7 @@ Pack images remain API catalog data. No private assets or account records are bu
 
 `npm test` builds the SDK and reference application and runs local contract, transport, recovery and UI fixture tests. `npm run build:openapi` regenerates the contract. Use `npm run smoke`, `npm run check:readiness` and `npm run acceptance:verify` only with your own configured API and evidence; generated local evidence is ignored by Git.
 
-Treasury snapshot/activity and Gacha receipts require corresponding backend deployment. They are not deployed by this repository, and deployed acceptance remains unverified. Missing funds stay unknown. Live is an API environment, not proof of mainnet. Aggregator is paused; local fixtures do not certify real settlement or physical fulfilment. See [capability boundaries](docs/backend-capability-gaps.md).
+Treasury snapshot/activity and Gacha receipt routes are deployed on the Ript API. Sandbox and live treasury reads and credential rejection were verified against backend commit `5c64e17`; receipt missing-order handling was verified. Paid settlement acceptance remains unverified. See [deployment verification](docs/builders/deployment.md). Missing funds stay unknown. Live is an API environment, not proof of mainnet. Aggregator is paused; local fixtures do not certify real settlement or physical fulfilment. See [capability boundaries](docs/backend-capability-gaps.md).
 
 ## License
 

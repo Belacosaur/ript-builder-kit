@@ -14,7 +14,7 @@ The built-UI lifecycle tests use valid legacy and v0 two-signer transactions wit
 
 ## Optional settlement evidence
 
-The local additive receipt route is `GET /sandbox/v1/gacha/orders/<64-hex-order-id>/receipts?wallet=<buyer-public-key>` with the sandbox Gacha credential. The client fixed proxy operation is `receipts`. A deployed 404 means the capability is missing; never infer payout from card dispositions. The response has `historyComplete:false` and latest `sellback` intent only. `sellbackSignature` is a public chain reference; raw signed consent remains private. Finalized accounting includes safe pre/post token balances/account keys and frozen selected-card amounts. The client must independently check exact buyer credit, partner debit and Ript fee.
+The additive receipt route is `GET /sandbox/v1/gacha/orders/<64-hex-order-id>/receipts?wallet=<buyer-public-key>` with the sandbox Gacha credential. The client fixed proxy operation is `receipts`. A deployed 404 means the capability is missing; never infer payout from card dispositions. The response has `historyComplete:false` and latest `sellback` intent only. `sellbackSignature` is a public chain reference; raw signed consent remains private. Finalized accounting includes safe pre/post token balances/account keys and frozen selected-card amounts. The client must independently check exact buyer credit, partner debit and Ript fee.
 
 Use the typed Explorer for Inventory/collector/partner/supplier/fulfilment contracts. Keep sessions and rk_test/rk_live keys on the server. Missing optional credentials return actionable errors without forwarding a Gacha key. See backend-capability-gaps.md for deployment and acceptance boundaries.
 

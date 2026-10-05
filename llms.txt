@@ -10,3 +10,5 @@ Start with docs/builders/quickstart.md and docs/builders/ai-instructions.md. The
 - examples/server/README.md: independent framework-free dashboard
 
 Never treat missing observations as zero or readiness. Live is an API environment; read actual chain/mint metadata. Aggregator is paused. Local tests do not establish deployed acceptance.
+
+- docs/builders/deployment.md: Git release and bounded deployed verification; paid settlement remains unverified
