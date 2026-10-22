@@ -973,3 +973,21 @@ dl dt {
     scroll-behavior: auto !important;
   }
 }
+
+/* Client handover: readable controls, stable layout and a truly closed mobile menu. */
+.sr { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.checklist span { float:none; }
+summary { cursor:pointer; color:#b4c5de; }
+.integration-details { margin-top:24px; }
+.integration-details > summary { padding:16px; border:1px solid #293851; border-radius:8px; }
+.status p { margin:0; color:inherit; }
+.status details { margin-top:8px; }
+.balance-value { font-size:24px; font-weight:600; color:#edf4ff; }
+.pack-art img, .card-art img { width:auto; height:100%; }
+@media (max-width:700px) {
+ .sidebar:not(.open) { display:none; }
+ .sidebar { overflow-y:auto; }
+ .topbar .toolbar { flex-wrap:wrap; }
+ .checklist li { overflow-wrap:anywhere; }
+ .toolbar button { min-height:44px; }
+}

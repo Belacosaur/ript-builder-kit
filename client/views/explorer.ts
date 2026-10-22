@@ -23,6 +23,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
   const selected = () => definitions().find((d) => d.id === operation.value);
   function route() {
     const def = selected();
+    let valid = false;
     root.querySelector("#operation-auth")!.textContent =
       (services.find((s) => s.id === service.value)?.auth ?? "unknown") +
       " · " +
@@ -31,6 +32,8 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
       const parsed = JSON.parse(params.value || "{}");
       if (service.value === "gacha") {
         const r = resolveOperation(operation.value, parsed);
+        resolveServiceOperation(service.value, operation.value, parsed, body.value ? JSON.parse(body.value) : undefined, store.get().environment);
+        valid = true;
         root.querySelector("#route")!.textContent =
           r.method +
           " " +
@@ -44,6 +47,7 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
           body.value ? JSON.parse(body.value) : undefined,
           store.get().environment,
         );
+        valid = true;
         root.querySelector("#route")!.textContent = r.method + " " + r.path;
       }
     } catch {
@@ -57,6 +61,16 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
           " · fill required inputs"
         : "No supported operations yet";
     }
+    const s = store.get();
+    const definition = services.find(v => v.id === service.value);
+    const auth = definition?.auth;
+    const configured = auth === "public" ||
+      (auth === "gacha-key" && !!s.config?.environments?.[s.environment]?.configured) ||
+      (auth === "inventory-key" && !!s.config?.services?.inventory?.[s.environment]?.configured) ||
+      (auth === "collector-session" && !!s.config?.services?.collector?.configured) ||
+      (auth === "partner-session" && (operation.value === "session" || !!s.config?.services?.partner?.configured));
+    root.querySelector<HTMLButtonElement>("#execute")!.disabled = s.busy || !valid || !configured;
+    root.querySelector<HTMLButtonElement>("#use-order")!.disabled = service.value !== "gacha" || !s.order?.id || !s.wallet;
   }
   function typed() {
     fields.innerHTML = "";
@@ -100,13 +114,16 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
     operation.innerHTML = definitions()
       .map((d) => `<option value="${esc(d.id)}">${esc(d.id)}</option>`)
       .join("");
+    if (service.value === "gacha") operation.value = "packs";
     params.value = "{}";
     body.value = "";
     typed();
     route();
   }
   service.addEventListener("change", populate);
-  operation.addEventListener("change", route);
+  operation.addEventListener("change", () => {
+    params.value = "{}"; body.value = ""; typed(); route();
+  });
   params.addEventListener("input", route);
   body.addEventListener("input", route);
   root.querySelector("#example")!.addEventListener("click", () => {
@@ -167,7 +184,6 @@ export function mount(root: HTMLElement, store: Store, actions: Actions) {
       s.response === null
         ? "No request yet."
         : JSON.stringify(s.response, null, 2);
-    root.querySelector<HTMLButtonElement>("#execute")!.disabled = s.busy;
     if (last !== s.response) {
       last = s.response;
       const preview = root.querySelector("#partner-preview")!;

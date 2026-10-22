@@ -77,7 +77,7 @@ async function fixture(version: "legacy" | "v0", reject = false) {
       const result =
         request.method === "getGenesisHash"
           ? chain
-          : request.method === "getBalance"
+          : request.method === "getBlockHeight" ? 100 : request.method === "isBlockhashValid" ? {context:{slot:1},value:true} : request.method === "getBalance"
             ? { context: { slot: 1 }, value: 1000000 }
             : request.method === "getAccountInfo"
               ? { context: { slot: 1 }, value: account }
@@ -117,6 +117,7 @@ async function fixture(version: "legacy" | "v0", reject = false) {
     const op = String(path).split("/").pop();
     if (path === "/api/config")
       result = {
+        services: { collector: { configured: true } },
         environments: {
           sandbox: {
             configured: true,
@@ -169,6 +170,7 @@ async function fixture(version: "legacy" | "v0", reject = false) {
       result = {
         intentId: intent,
         transaction: f.unsigned,
+        lastValidBlockHeight:250,
         skuIds: request.body.skuIds,
       };
     else if (op === "submit") {
@@ -338,3 +340,4 @@ test("failed balance observation removes previously ready funds from built Overv
     f.dom.window.close();
   }
 });
+

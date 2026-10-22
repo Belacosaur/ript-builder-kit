@@ -4,6 +4,8 @@ An API integration reference for builders and AI coding agents: a TypeScript SDK
 
 Bring your own Ript service credentials. Accounts, pack artwork and treasury metadata come from the API; no existing application checkout or project ID is required. This repository contains a local integration server, not the Ript backend.
 
+Gacha partners use Web3 openings backed by their treasury. Inventory partners use a separate API key and are billed monthly by invoice. Choose the model you are integrating; the Gacha wallet journey is not required for Inventory.
+
 ## Start here
 
 Requires Node.js 22+ and npm.
@@ -24,7 +26,9 @@ npm test
 
 ## Run the reference application
 
-After building, set `GACHA_SANDBOX_KEY` in your server environment and run `npm start`. Open http://127.0.0.1:4315/. See [.env.example](.env.example) for optional service credentials. The root application does not automatically load `.env`; set environment variables in your shell. Never place service credentials in browser code.
+After building, copy `.env.example` to `.env`, add your `GACHA_SANDBOX_KEY`, and run `npm start`. Open http://127.0.0.1:4315/. The application loads `.env` automatically; existing shell variables take precedence. Optional credentials enable Inventory, collector and partner tools. Never place service credentials in browser code.
+
+Start in Sandbox: connect a compatible wallet, check balances in Wallet & Treasury, request test funds if needed, then choose a pack. Keep requires a collector session with this wallet linked; sellback uses the original opening wallet. If a request is interrupted, resume the saved opening. See [client handover checklist](docs/builders/handover.md) before sharing with a client.
 
 The reference application deliberately restricts its upstream to the approved Ript API origin in [server/config.ts](server/config.ts). The standalone SDK and treasury example accept your explicit HTTPS API origin. Wallet signing requires a compatible injected Solana wallet; financial mutations require browser Web Locks. The application binds to loopback. Remote hosting needs your own user authentication and authorization.
 

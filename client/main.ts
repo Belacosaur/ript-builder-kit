@@ -44,6 +44,7 @@ import {
 } from "./testing.js";
 import type { Actions } from "./views/common.js";
 import { validateCatalog } from "../shared/dto.js";
+import { sellbackReceipt } from "./settlement.js";
 const store = createStore(initialState());
 let treasuryAbort: AbortController | undefined;
 let wallet: Wallet | undefined,
@@ -76,7 +77,7 @@ const controller = createGachaController({
   storage: localStorage,
   call: (op, params, body, signal) =>
     callGacha(op, scope(), params, body, signal),
-  signQuote: async (transaction, start) => {
+  signQuote: async (transaction, start, lastValidBlockHeight) => {
     if (!wallet) throw new Error("wallet_not_connected");
     return signQuote(
       transaction,
@@ -84,10 +85,11 @@ const controller = createGachaController({
       scope,
       wallet,
       new Connection(store.get().config.environments[start.environment].rpcUrl),
+      lastValidBlockHeight,
     );
   },
   accept: (order) => {
-    store.update((s) => ({ ...s, order }));
+    store.update((s) => ({ ...s, order, ...(s.order?.id !== order.id ? {sellbackReceipt:null,sellbackStatus:""} : {}) }));
     recovery();
   },
   progress: (progress) => store.update((s) => ({ ...s, progress })),
@@ -109,11 +111,11 @@ async function action(work: () => Promise<unknown>) {
   const ticket = revision;
   store.update((s) => ({ ...s, busy: true, error: "", progress: "Working…" }));
   try {
-    await work();
+    const outcome = await work();
     if (ticket === revision)
       store.update((s) => ({
         ...s,
-        progress: "Operation completed. Inspect the current evidence.",
+        progress: typeof outcome === "string" ? outcome : "Operation completed. Inspect the current evidence.",
       }));
   } catch (e) {
     if (ticket === revision)
@@ -128,6 +130,23 @@ async function action(work: () => Promise<unknown>) {
     }
   }
 }
+
+async function checkSellbackReceipt(expectedSkuIds?: string[]) {
+  const start = scope(), ticket = revision, order = store.get().order;
+  if (!order?.cards?.some((c: any) => c.disposition === "sold")) return;
+  store.update(s => ({...s,sellbackReceipt:null,sellbackStatus:"Checking the finalized sellback receipt…"}));
+  try {
+    const raw = await callGacha("receipts",start,{id:order.id,wallet:start.wallet});
+    if (ticket !== revision || !sameScope(start,scope()) || store.get().order?.id !== order.id) return;
+    const receipt = sellbackReceipt(raw,start,order,store.get().network?.token,expectedSkuIds);
+    store.update(s => ({...s,sellbackReceipt:receipt,sellbackStatus:""}));
+    return "Sellback complete. Your finalized receipt is shown in Collection.";
+  } catch {
+    if (ticket === revision && sameScope(start,scope()) && store.get().order?.id === order.id)
+      store.update(s => ({...s,sellbackStatus:"Cards are sold. The payout receipt is not confirmed yet. Check again without selling another time."}));
+    return "Cards sold. Check the payout receipt in Collection.";
+  }
+}
 async function observeBuyerBalances(
   start: Scope,
   rpcUrl: string,
@@ -135,9 +154,6 @@ async function observeBuyerBalances(
 ) {
   store.update((s) => ({
     ...s,
-    treasurySnapshot: null,
-    treasuryActivity: null,
-    treasuryStatus: "Unverified",
     balances: null,
     balanceObservation: "loading",
     readiness: [],
@@ -151,9 +167,6 @@ async function observeBuyerBalances(
     if (sameScope(start, scope()))
       store.update((s) => ({
         ...s,
-        treasurySnapshot: null,
-        treasuryActivity: null,
-        treasuryStatus: "Unverified",
         balances: null,
         balanceObservation: "unavailable",
         readiness: [],
@@ -197,6 +210,8 @@ function invalidateWallet(disconnect: boolean) {
     ...s,
     wallet: wallet?.publicKey?.toBase58() ?? "",
     order: null,
+    sellbackReceipt: null,
+    sellbackStatus: "",
     treasurySnapshot: null,
     treasuryActivity: null,
     treasuryStatus: "Unverified",
@@ -217,6 +232,7 @@ function invalidateWallet(disconnect: boolean) {
   recovery();
 }
 async function refresh() {
+  if (store.get().busy) return;
   treasuryAbort?.abort();
   store.update((s) => ({
     ...s,
@@ -237,15 +253,21 @@ async function refresh() {
   store.update((s) => ({
     ...s,
     progress: "Loading " + env + " services…",
+    catalog: null,
+    network: null,
+    testing: null,
+    balances: null,
+    balanceObservation: "unverified",
+    readiness: [],
     error: "",
   }));
   try {
-    const cfg = await fetch("/api/config", { signal: ac.signal }).then((r) => {
+    const cfg = await fetch("/api/config", { signal: AbortSignal.any([ac.signal, AbortSignal.timeout(15000)]) }).then((r) => {
       if (!r.ok) throw new Error("config_unavailable");
       return r.json();
     });
     check();
-    const response = await fetch("/api/network/" + env, { signal: ac.signal });
+    const response = await fetch("/api/network/" + env, { signal: AbortSignal.any([ac.signal, AbortSignal.timeout(15000)]) });
     const net = await response.json();
     check();
     if (!response.ok) throw new Error("network_metadata_unavailable");
@@ -546,7 +568,11 @@ const actions: Actions = {
       const order = await controller.resume();
       store.update((s) => ({ ...s, view: order.state === "complete" ? "collection" : "gacha" }));
     }),
-  load: (id) => void action(() => controller.load(id)),
+  load: (id) => void action(async () => {
+    const order = await controller.load(id);
+    store.update(s => ({...s, view: order.state === "complete" ? "collection" : "runs"}));
+    return checkSellbackReceipt();
+  }),
   release: () =>
     void action(async () => {
       await controller.release();
@@ -558,9 +584,15 @@ const actions: Actions = {
       await checkCollector();
       if (!store.get().collectorLinked)
         throw new Error("collector_wallet_not_verified");
-      return controller.keep(id);
+      return controller.keep(id, store.get().order?.id);
     }),
-  sell: (ids) => void action(() => controller.sell(ids)),
+  sell: (ids) => void action(async () => {
+    const r = store.get().recovery;
+    const selected = ids.length ? [...ids] : r.kind === "ready" ? r.pending.sellback?.skuIds : undefined;
+    await controller.sell(ids, ids.length ? store.get().order?.id : undefined);
+    return checkSellbackReceipt(selected);
+  }),
+  checkSellback: () => void action(checkSellbackReceipt),
   balance: () =>
     void action(async () => {
       const start = scope();
@@ -777,7 +809,7 @@ const actions: Actions = {
             op === "payment" ? "payment" : "sellback",
             (body?.skuIds as string[]) ?? [],
           );
-        store.update((s) => ({ ...s, response: traceValue(result) }));
+        store.update((s) => ({ ...s, response: traceValue(result), ...(op === "packs" ? {catalog:validateCatalog(result)} : {}) }));
         recovery();
       };
       if (["packs", "read", "proof", "receipts"].includes(op)) await work();
@@ -830,6 +862,8 @@ store.subscribe((s) => {
       catalog: null,
       network: null,
       order: null,
+      sellbackReceipt: null,
+      sellbackStatus: "",
       recovery: { kind: "absent" },
       selectedPack: "",
       history: [],

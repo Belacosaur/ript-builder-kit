@@ -6,6 +6,7 @@ export type BoundQuote = {
   skuIds: string[];
   intentId: string;
   transaction: string;
+  lastValidBlockHeight?: number;
 };
 export function bindQuote(
   raw: any,
@@ -15,6 +16,8 @@ export function bindQuote(
   skuIds: string[] = [],
 ): BoundQuote {
   if (!raw?.intentId || !raw.transaction || !orderId)
+    throw new Error("quote_invalid");
+  if (raw.lastValidBlockHeight !== undefined && (!Number.isSafeInteger(raw.lastValidBlockHeight) || raw.lastValidBlockHeight < 1))
     throw new Error("quote_invalid");
   if (
     kind === "sellback" &&
@@ -32,6 +35,7 @@ export function bindQuote(
     skuIds: [...skuIds],
     intentId: raw.intentId,
     transaction: raw.transaction,
+    lastValidBlockHeight: raw.lastValidBlockHeight,
   };
 }
 export function validateBoundQuote(

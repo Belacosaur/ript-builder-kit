@@ -52,6 +52,7 @@ async function fixture(pending?: any, complete = false) {
     const data =
       path === "/api/config"
         ? {
+            services: { collector: { configured: true } },
             environments: {
               sandbox: {
                 configured: true,
@@ -129,6 +130,7 @@ async function fixture(pending?: any, complete = false) {
   };
   const fill = (id: string, value: string) => {
     (w.document.querySelector("#" + id) as any).value = value;
+    w.document.querySelector("#" + id)!.dispatchEvent(new w.Event("input", {bubbles:true}));
   };
   const operation = (value: string) => {
     fill("operation", value);
@@ -470,7 +472,7 @@ test("switching environment clears authenticated collector linkage", async () =>
     await settle();
     assert.match(
       f.w.document.querySelector("#collector-link-status")!.textContent!,
-      /Unverified/,
+      /Check whether this wallet is linked/,
     );
   } finally {
     f.dom.window.close();
@@ -513,5 +515,30 @@ test('unprovisioned and malformed treasury observations never display spendable 
  await f.click('treasury-read');assert.match(f.w.document.querySelector('#treasury-snapshot')!.textContent!,/not-provisioned/);assert.match(f.w.document.querySelector('#treasury-snapshot')!.textContent!,/Unknown/);
  raw={...treasuryFixtureData,mint:'2'.repeat(32),ownerSession:'ript_gacha_sandbox_SECRET'};await f.click('treasury-read');assert.doesNotMatch(f.w.document.querySelector('#treasury-snapshot')!.textContent!,/600.000000|SECRET|Ready/);
  assert.equal(f.calls.filter(c=>/credentials|fund\/prepare/.test(c.path)).length,0);
+ }finally{f.dom.window.close();}
+});
+
+
+test("failed refresh clears stale catalog and disables purchasing",async()=>{
+ const f=await fixture();
+ try {
+  const pack=f.w.document.querySelector<HTMLElement>('[data-pack]')!;pack.click();await settle();
+  assert.equal(f.w.document.querySelector<HTMLButtonElement>('#open-pack')!.disabled,false);
+  const original=f.w.fetch;
+  (f.w as any).fetch=async(path:any,init:any)=>String(path).startsWith('/api/network/')?{ok:false,status:503,json:async()=>({error:'unavailable'})}:original(path,init);
+  await f.click('refresh');
+  assert.equal(f.w.document.querySelector<HTMLButtonElement>('#open-pack')!.disabled,true);
+  assert.equal(f.w.document.querySelectorAll('[data-pack]').length,0);
+ }finally{f.dom.window.close();}
+});
+
+test('a catalog read in Explorer updates opening eligibility when a pack becomes paused',async()=>{
+ const f=await fixture();try {
+  f.w.document.querySelector<HTMLElement>('[data-pack]')!.click();await settle();
+  assert.equal(f.w.document.querySelector<HTMLButtonElement>('#open-pack')!.disabled,false);
+  const original=f.w.fetch;
+  (f.w as any).fetch=async(path:any,init:any)=>String(path).endsWith('/packs')?new Response(JSON.stringify({environment:'sandbox',partnerId,chain,packs:[{id:'pack',status:'paused',maxQuantity:0,balanceUsdc:500,requiredFloatUsdc:500}]})):original(path,init);
+  f.operation('packs');await f.click('execute');
+  assert.equal(f.w.document.querySelector<HTMLButtonElement>('#open-pack')!.disabled,true);
  }finally{f.dom.window.close();}
 });

@@ -7,15 +7,15 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "dev": "node --env-file-if-exists=.env --import tsx server/index.ts",
     "build": "npm run build:sdk && tsc --noEmit && vite build",
-    "start": "tsx server/index.ts",
+    "start": "node --env-file-if-exists=.env --import tsx server/index.ts",
     "test": "npm run build && tsx --test shared/*.test.ts server/*.test.ts client/*.test.ts client/controllers/*.test.ts scripts/*.test.ts client/services/*.test.ts packages/sdk/src/*.test.ts",
-    "setup-account": "tsx scripts/setup-account.ts",
-    "smoke": "tsx scripts/smoke.ts",
+    "setup-account": "node --env-file-if-exists=.env --import tsx scripts/setup-account.ts",
+    "smoke": "node --env-file-if-exists=.env --import tsx scripts/smoke.ts",
     "test:unit": "npm run build && tsx --test shared/*.test.ts server/*.test.ts client/*.test.ts client/controllers/*.test.ts scripts/*.test.ts client/services/*.test.ts",
     "test:ui": "npm run build && tsx --test client/ui.test.ts client/lifecycle.ui.test.ts client/shell.test.ts",
-    "check:readiness": "tsx scripts/readiness.ts",
+    "check:readiness": "node --env-file-if-exists=.env --import tsx scripts/readiness.ts",
     "acceptance:verify": "tsx scripts/verify-acceptance.ts",
     "build:sdk": "tsc -p packages/sdk/tsconfig.build.json",
     "build:openapi": "tsx scripts/build-openapi.ts"

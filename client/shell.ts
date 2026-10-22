@@ -1,4 +1,4 @@
-import { subscribe, type Actions } from "./views/common.js";
+import { subscribe, esc, explainError, type Actions } from "./views/common.js";
 import type { Store, ViewId } from "./store.js";
 import { mount as overview } from "./views/overview.js";
 import { mount as gacha } from "./views/gacha.js";
@@ -17,7 +17,7 @@ const views: [ViewId, string, typeof overview][] = [
   ["guide", "Integration Guide", guide],
 ];
 export function mountShell(root: HTMLElement, store: Store, actions: Actions) {
-  root.innerHTML = `<div class="app-shell"><aside class="sidebar" id="sidebar"><a class="brand" href="#">RIPT<span>CLIENT LAB</span></a><p class="eyebrow">INTEGRATION WORKSPACE</p><nav aria-label="Workspace" role="tablist">${views.map(([id, label], i) => `<button id="tab-${id}" data-view="${id}" role="tab" aria-controls="panel-${id}"><span class="nav-index" aria-hidden="true">0${i + 1}</span>${label}</button>`).join("")}</nav><div class="sidebar-foot">Independent reference client<br><small>Keys remain on your server.</small></div></aside><div class="app-content"><header class="topbar"><button id="menu-toggle" aria-controls="sidebar" aria-expanded="false" class="secondary">Menu</button><span id="context" class="context"></span><div class="toolbar"><label class="sr" for="environment">API environment</label><select id="environment"><option value="sandbox">Sandbox</option><option value="live">Live API</option></select><button id="connect">Connect wallet</button><button id="refresh" class="secondary">Refresh</button></div></header><div id="status" role="status" aria-live="polite" class="status"></div><main>${views.map(([id, label]) => `<section id="panel-${id}" class="workspace-panel" role="tabpanel" aria-labelledby="tab-${id}" aria-label="${label}"></section>`).join("")}</main><footer>Ript Client Lab · API v1 · loopback only · evidence before acceptance</footer></div></div>`;
+  root.innerHTML = `<div class="app-shell"><aside class="sidebar" id="sidebar"><a class="brand" href="#">RIPT<span>BUILDER KIT</span></a><p class="eyebrow">INTEGRATION WORKSPACE</p><nav aria-label="Workspace" role="tablist">${views.map(([id, label], i) => `<button id="tab-${id}" data-view="${id}" role="tab" aria-controls="panel-${id}"><span class="nav-index" aria-hidden="true">0${i + 1}</span>${label}</button>`).join("")}</nav><div class="sidebar-foot">Independent reference client<br><small>Keys remain on your server.</small></div></aside><div class="app-content"><header class="topbar"><button id="menu-toggle" aria-controls="sidebar" aria-expanded="false" class="secondary">Menu</button><span id="context" class="context"></span><div class="toolbar"><label class="sr" for="environment">API environment</label><select id="environment"><option value="sandbox">Sandbox</option><option value="live">Live API</option></select><button id="connect">Connect wallet</button><button id="refresh" class="secondary">Refresh</button></div></header><div id="status" role="status" aria-live="polite" class="status"></div><main>${views.map(([id, label]) => `<section id="panel-${id}" class="workspace-panel" role="tabpanel" aria-labelledby="tab-${id}" aria-label="${label}"></section>`).join("")}</main><footer>Ript Builder Kit · API v1 · credentials stay on your server</footer></div></div>`;
   const cleanups = views.map(([id, _label, mount]) =>
     mount(root.querySelector<HTMLElement>("#panel-" + id)!, store, actions),
   );
@@ -76,7 +76,8 @@ export function mountShell(root: HTMLElement, store: Store, actions: Actions) {
         b.tabIndex = s.view === id ? 0 : -1;
       }
       const status = root.querySelector("#status")!;
-      status.textContent = s.error || s.progress;
+      if (s.error) status.innerHTML = `<p>${esc(explainError(s.error))}</p><details><summary>Technical details</summary><code>${esc(s.error)}</code></details>`;
+      else status.textContent = s.progress;
       status.className = "status" + (s.error ? " error" : "");
       root.querySelector<HTMLSelectElement>("#environment")!.value =
         s.environment;
@@ -84,13 +85,14 @@ export function mountShell(root: HTMLElement, store: Store, actions: Actions) {
         ? "Wallet connected"
         : "Connect wallet";
       root.querySelector<HTMLButtonElement>("#connect")!.disabled = s.busy;
+      root.querySelector<HTMLButtonElement>("#refresh")!.disabled = s.busy;
       root.querySelector("#context")!.textContent =
         s.environment.toUpperCase() +
         " · " +
         (s.network?.chain === "EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG"
           ? "DEVNET"
           : s.network?.chain
-            ? "CUSTOM CHAIN"
+            ? s.network.chain === "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d" ? "MAINNET" : "CUSTOM CHAIN"
             : "NETWORK UNVERIFIED") +
         " · API v1";
     }),

@@ -73,3 +73,14 @@ test('wallet receives the exact original compiled message for a legacy quote',as
 });
 test('supported leading wallet priority fee preserves buyer consent',async()=>{const result=await signQuote(quote,scope,()=>scope,{publicKey:key.publicKey,signTransaction:async(t)=>{const legacy=Transaction.from(t.serialize());legacy.instructions.unshift(ComputeBudgetProgram.setComputeUnitPrice({microLamports:1000}));legacy.partialSign(key);return legacy;}},{getGenesisHash:async()=>scope.chain});assert.ok(result);});
 test('wallet cannot change the purchase amount',async()=>{await assert.rejects(signQuote(quote,scope,()=>scope,{publicKey:key.publicKey,signTransaction:async(t)=>{const legacy=Transaction.from(t.serialize());legacy.instructions[0].data[4]^=1;legacy.partialSign(key);return legacy;}},{getGenesisHash:async()=>scope.chain}),/wallet_changed_transaction/);});
+
+test('near-expiry quote never prompts the wallet',async()=>{
+ let prompts=0;
+ await assert.rejects(signQuote(quote,scope,()=>scope,{publicKey:key.publicKey,signTransaction:async t=>{prompts++;return t;}},{getGenesisHash:async()=>scope.chain,getBlockHeight:async()=>100} as any,120),/quote_expired/);
+ assert.equal(prompts,0);
+});
+test('malformed transaction reports quote_invalid before any wallet prompt',async()=>{
+ let prompts=0;
+ await assert.rejects(signQuote('[redacted]',scope,()=>scope,{publicKey:key.publicKey,signTransaction:async t=>{prompts++;return t;}},{getGenesisHash:async()=>scope.chain}),/quote_invalid/);
+ assert.equal(prompts,0);
+});

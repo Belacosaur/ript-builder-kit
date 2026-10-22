@@ -129,3 +129,12 @@ test("top-level page navigation accepts cross-site metadata while API and iframe
  assert.equal(calls,0);
  }finally{await app.close();}
 });
+test('combined creation quote reaches the wallet while other secrets stay redacted', async () => {
+ const app = createApp(config, async () => new Response(JSON.stringify({payment:{transaction:'AQIDBA==',secret:key},transaction:'private-history'})));
+ const res = await app.inject({method:'POST',url:'/api/gacha/create',payload:{environment:'sandbox',params:{},body:{partner_id:'11111111-1111-4111-8111-111111111111',wallet:'11111111111111111111111111111111',packId:'pack',quantity:1,clientNonce:'abcdefghijklmnop',preparePayment:true}}});
+ assert.equal(res.statusCode,200);
+ assert.equal(res.json().payment.transaction,'AQIDBA==');
+ assert.equal(res.json().payment.secret,'[redacted]');
+ assert.equal(res.json().transaction,'[redacted]');
+ await app.close();
+});

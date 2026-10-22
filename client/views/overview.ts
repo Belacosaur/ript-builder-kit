@@ -4,12 +4,13 @@ import { services } from "../../shared/services.js";
 import { subscribe, esc, type Actions } from "./common.js";
 import type { Store } from "../store.js";
 export function mount(root: HTMLElement, store: Store, _actions: Actions) {
-  root.innerHTML = `<div class="hero"><div class="eyebrow">BUILD WITH RIPT</div><h1>Your integration starts here.</h1><p>Explore real packs. Follow wallet consent through settlement. Verify each service with its own evidence.</p><button id="overview-gacha">Explore Gacha →</button></div><div id="overview-stats" class="stats"></div><div class="columns"><section class="panel"><h2>Ready for your first opening?</h2><ol id="setup-checks" class="checklist"></ol></section><section class="panel"><h2>A result you can trust</h2><p>Reachability confirms an endpoint responds. Readiness checks prerequisites. Acceptance requires finalized transactions and accounting.</p><p class="muted">Fixture tests prove client behavior. They do not certify deployed services.</p></section></div><section class="panel"><h2>Service coverage</h2><div class="table-scroll"><table><thead><tr><th>Service</th><th>Configuration</th><th>Ready</th><th>Acceptance</th><th>Next step</th></tr></thead><tbody id="coverage"></tbody></table></div></section>`;
+  root.innerHTML = `<div class="hero"><div class="eyebrow">BUILD WITH RIPT</div><h1>Your integration starts here.</h1><p>Try a sandbox opening, explore your cards, and see how the API fits your own application.</p><button id="overview-gacha">Explore Gacha →</button></div><div id="overview-stats" class="stats"></div><div class="columns"><section class="panel"><h2>Ready for your first opening?</h2><ol id="setup-checks" class="checklist"></ol></section><section class="panel"><h2>Try it in four steps</h2><ol class="checklist"><li>Connect your Solana wallet.</li><li>Open Wallet &amp; Treasury to check balances and request sandbox test funds.</li><li>Choose a pack, approve payment, and view your cards.</li><li>Sell cards back, or link your collector account to keep them.</li></ol><button id="overview-wallet" class="secondary">Check wallet &amp; test funds</button><p class="muted">Sandbox always uses Devnet test assets. Live uses the network shown in the header.</p></section></div><details class="integration-details"><summary>Builder details: service configuration and verification</summary><section class="panel"><h2>Service coverage</h2><div class="table-scroll"><table><thead><tr><th>Service</th><th>Configuration</th><th>Ready</th><th>Acceptance</th><th>Next step</th></tr></thead><tbody id="coverage"></tbody></table></div><p>Local tests check application behavior. Real transaction and service acceptance must be completed before client handover.</p></section></details>`;
   root
     .querySelector("#overview-gacha")!
     .addEventListener("click", () =>
       store.update((s) => ({ ...s, view: "gacha" })),
     );
+  root.querySelector("#overview-wallet")!.addEventListener("click", () => store.update(s=>({...s,view:"wallet"})));
   return subscribe(store, (s) => {
     const cfg = s.config?.environments?.[s.environment];
     const pack = s.catalog?.packs?.find((p: any) => p.id === s.selectedPack);
@@ -41,12 +42,12 @@ export function mount(root: HTMLElement, store: Store, _actions: Actions) {
         "Catalog",
         s.catalog ? "Loaded from API" : "Refresh after configuration",
       ],
-      ["Buyer wallet", s.wallet ? "Connected" : "Connect an injected wallet"],
+      ["Buyer wallet", s.wallet ? "Connected" : "Connect a Solana wallet"],
       [
         "Buyer balances",
         s.balances ? "Observed on configured chain" : "Check Wallet & Treasury",
       ],
-      ["Collector linkage", "Verify a collector session before Keep"],
+      ["Keep cards", s.collectorLinked === true ? "Collector wallet linked" : s.config?.services?.collector?.configured ? "Link wallet in Wallet & Treasury" : "Collector setup required; sellback is separate"],
     ]
       .map(
         ([label, value]) =>

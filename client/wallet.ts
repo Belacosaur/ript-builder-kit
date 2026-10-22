@@ -21,7 +21,8 @@ export async function signQuote(
   startScope: Scope,
   getCurrentScope: () => Scope,
   wallet: Wallet,
-  rpc: { getGenesisHash: () => Promise<string> },
+  rpc: { getGenesisHash: () => Promise<string>; getBlockHeight?: (commitment: "confirmed") => Promise<number>; isBlockhashValid?: (blockhash: string, config: {commitment: "confirmed"}) => Promise<{value:boolean}> },
+  lastValidBlockHeight?: number,
 ): Promise<string> {
   const check = () => {
     if (
@@ -31,13 +32,23 @@ export async function signQuote(
       throw new Error("scope_changed");
   };
   check();
-  if ((await rpc.getGenesisHash()) !== startScope.chain)
+  const [genesis, height] = await Promise.all([
+    rpc.getGenesisHash(),
+    lastValidBlockHeight !== undefined && rpc.getBlockHeight ? rpc.getBlockHeight("confirmed") : Promise.resolve(undefined),
+  ]);
+  if (genesis !== startScope.chain)
     throw new Error("chain_mismatch");
   check();
   let tx: Transaction | VersionedTransaction;
   // Preserve the exact compiled message, including legacy account ordering.
   // Rebuilding a legacy Transaction can reorder accounts across wallet SDKs.
-  tx = VersionedTransaction.deserialize(bytes(transaction));
+  try { tx = VersionedTransaction.deserialize(bytes(transaction)); }
+  catch { throw new Error("quote_invalid"); }
+  if (height !== undefined && lastValidBlockHeight! <= height + 60)
+    throw new Error("quote_expired");
+  if (height === undefined && rpc.isBlockhashValid && !(await rpc.isBlockhashValid(tx.message.recentBlockhash,{commitment:"confirmed"})).value)
+    throw new Error("quote_expired");
+  check();
   const before =
     tx instanceof Transaction ? tx.serializeMessage() : tx.message.serialize();
   const returned = await wallet.signTransaction(tx);

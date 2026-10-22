@@ -1,0 +1,17 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {Keypair,SystemProgram,Transaction,VersionedTransaction,TransactionMessage} from '@solana/web3.js';
+import {createApp} from './proxy.js';import {createGachaController} from '../client/controllers/gacha.js';import {signQuote} from '../client/wallet.js';
+for(const version of ['legacy','v0'])test(`combined ${version} payment survives proxy, prompts wallet and submits exact signed consent`,async()=>{
+ const buyer=Keypair.generate(),partnerId='11111111-1111-4111-8111-111111111111',scope={environment:'sandbox' as const,partnerId,wallet:buyer.publicKey.toBase58(),chain:'fixture-genesis'};
+ const instruction=SystemProgram.transfer({fromPubkey:buyer.publicKey,toPubkey:Keypair.generate().publicKey,lamports:1}),blockhash=Keypair.generate().publicKey.toBase58();
+ const tx=version==='legacy'?new Transaction({feePayer:buyer.publicKey,recentBlockhash:blockhash}).add(instruction):new VersionedTransaction(new TransactionMessage({payerKey:buyer.publicKey,recentBlockhash:blockhash,instructions:[instruction]}).compileToV0Message());
+ const unsigned=Buffer.from(tx.serialize({requireAllSignatures:false})).toString('base64');let nonce='',prompts=0,submits=0;const id='ab'.repeat(32),intentId='22222222-2222-4222-8222-222222222222';
+ const complete=()=>({...scope,id,packId:'pack',quantity:1,clientNonce:nonce,state:'complete',paymentSignature:'fixture-payment',fulfilmentSignature:'fixture-fulfilment',paymentFirst:true,cards:[{skuId:partnerId,disposition:'vaulted'}]});
+ const app=createApp({baseUrl:'https://ript-backend-production.up.railway.app',port:4315,environments:{sandbox:{key:'ript_gacha_sandbox_fixture-only',rpcUrl:'https://api.devnet.solana.com'},live:{key:'',rpcUrl:'https://api.devnet.solana.com'}}},async(url,init)=>{
+  const body=JSON.parse(String(init?.body));if(String(url).endsWith('/orders')){nonce=body.clientNonce;return new Response(JSON.stringify({...complete(),state:'awaiting_payment',paymentSignature:null,cards:[],payment:{intentId,transaction:unsigned,lastValidBlockHeight:250}}));}
+  assert.ok(String(url).endsWith('/submit'));submits++;assert.equal(body.intentId,intentId);const signed=VersionedTransaction.deserialize(Buffer.from(body.transaction,'base64'));assert.deepEqual(signed.message.serialize(),VersionedTransaction.deserialize(Buffer.from(unsigned,'base64')).message.serialize());assert.ok(signed.signatures[0].some(v=>v!==0));return new Response(JSON.stringify(complete()));
+ });
+ const data=new Map<string,string>();
+ try{const controller=createGachaController({scope:()=>scope,storage:{getItem:k=>data.get(k)??null,setItem:(k,v)=>{data.set(k,v);},removeItem:k=>{data.delete(k);}},canOpen:()=>true,progress:()=>{},accept:()=>{},lock:async(_s,_signal,work)=>work(),call:async(op,params,body)=>{const response=await app.inject({method:'POST',url:'/api/gacha/'+op,payload:{environment:'sandbox',params,body}});assert.equal(response.statusCode,200);return response.json();},signQuote:(wire,s,height)=>signQuote(wire,s,()=>scope,{publicKey:buyer.publicKey,signTransaction:async transaction=>{prompts++;assert.ok(transaction instanceof VersionedTransaction);transaction.sign([buyer]);return transaction;}},{getGenesisHash:async()=>scope.chain,getBlockHeight:async()=>100},height)});
+ assert.equal((await controller.open({packId:'pack',quantity:1})).state,'complete');assert.equal(prompts,1);assert.equal(submits,1);
+ }finally{await app.close();}
+});

@@ -22,6 +22,8 @@ export type AppState = {
   config: any;
   wallet: string;
   order: any;
+  sellbackReceipt?: import("./settlement.js").SellbackReceipt | null;
+  sellbackStatus?: string;
   recovery: RecoveryLoad;
   selectedPack: string;
   quantity: number;

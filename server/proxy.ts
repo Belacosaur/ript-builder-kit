@@ -139,6 +139,8 @@ export function createApp(config: Config, upstreamFetch: typeof fetch = fetch) {
         return reply.code(502).send({ error: "invalid_upstream_response" });
       } // Quotes must reach the wallet; redaction applies to logs/exports and other fields.
       const clean = redact(parsed);
+      if (response.ok && route.path === "/v1/gacha/orders" && body?.preparePayment === true && typeof parsed.payment?.transaction === "string")
+        clean.payment.transaction = parsed.payment.transaction;
       if (
         body !== undefined &&
         route.path.endsWith("/payment") &&
@@ -160,3 +162,4 @@ export function createApp(config: Config, upstreamFetch: typeof fetch = fetch) {
   registerServiceProxy(app, config, upstreamFetch);
   return app;
 }
+

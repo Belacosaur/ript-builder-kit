@@ -1,5 +1,7 @@
 # Authentication boundaries
 
+Gacha partners use Web3 openings and fund their partner treasury. Inventory partners integrate through the API and are billed monthly by invoice. These are separate partner products with separate API keys; an Inventory integration does not need the Gacha wallet journey or treasury.
+
 `createRiptServerClient` requires an explicit HTTPS root `baseUrl` and `environment`. Its `credentials` object supports `gachaKey`, `inventoryKey`, `collectorSession` and `partnerSession`. Each service selects its own credential; there is no substitution. Sandbox/live key prefixes are checked. Redirects are refused. Keep credentials on an authenticated application server. Dashboard users still require your own authorization.
 
 Gacha, testing and safe treasury reads use the partner/environment-bound Gacha key. Inventory and fulfilment use the Inventory key. Collector uses its collector session. Owner management, supplier and private partner operations use the owner partner session. Public partner session discovery uses no bearer credential. Existing keys do not promise arbitrary fine-grained read-only scopes: a key accepted for reads may also authorize existing mutations upstream.

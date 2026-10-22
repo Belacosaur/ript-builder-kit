@@ -23,6 +23,45 @@ const order = {
     { skuId: "11111111-1111-4111-8111-111111111111", disposition: "vaulted" },
   ],
 };
+test("fresh purchase uses the combined quote and accepts a completed submit without another read", async () => {
+  const f = setup(null);
+  let nonce = "";
+  const messages: string[] = [];
+  f.ports.progress = (message: string) => messages.push(message);
+  f.ports.signQuote = async (transaction: string) => {
+    assert.equal(transaction, "deposit-quote");
+    return "c2lnbmVk";
+  };
+  f.ports.call = async (op: string, _params: any, body: any) => {
+    f.calls.push(op);
+    if (op === "create") {
+      assert.equal(body.preparePayment, true);
+      nonce = body.clientNonce;
+      return { ...order, clientNonce: nonce, state: "awaiting_payment", paymentSignature: null,
+        payment: { intentId: "11111111-1111-4111-8111-111111111111", transaction: "deposit-quote" } };
+    }
+    if (op === "submit") return { ...order, clientNonce: nonce };
+    throw new Error("unexpected extra request: " + op);
+  };
+  await createGachaController(f.ports).open({ packId: "pack", quantity: 1 });
+  assert.deepEqual(f.calls, ["create", "submit"]);
+  assert.equal(messages[0], "Preparing your opening…");
+});
+test("paid pack processing only polls and never asks for payment again", async () => {
+  const f = setup();
+  let reads = 0;
+  const progress: string[] = [];
+  f.ports.progress = (message: string) => progress.push(message);
+  f.ports.signQuote = async () => { throw new Error("must not sign again"); };
+  f.ports.call = async (op: string) => {
+    f.calls.push(op);
+    assert.equal(op, "read");
+    return ++reads === 1 ? { ...order, state: "processing", paymentFirst: true, cards: [] } : order;
+  };
+  await createGachaController(f.ports).resume();
+  assert.deepEqual(f.calls, ["read", "read"]);
+  assert.ok(progress.includes("Payment received. Preparing your cards…"));
+});
 function setup(pending: any = p) {
   const data = new Map<string, string>();
   const storage = {
@@ -245,4 +284,61 @@ for(const safeToRetry of [true,false])test(`expired restore releases only when b
 test("resume of a safely expired order clears recovery without payment or resubmission",async()=>{
  const f=setup();f.ports.call=async(op:string)=>{f.calls.push(op);assert.equal(op,'read');return {...order,state:'expired',safeToRetry:true,paymentSignature:null,cards:[]};};
  await createGachaController(f.ports).resume();assert.deepEqual(f.calls,['read']);assert.equal(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])),null);
+});
+
+
+test("explicit Keep can adopt a completed historical order without recreating purchase",async()=>{
+ const f=setup(null);let kept=false;
+ f.ports.call=async(op:string)=>{f.calls.push(op);if(op==='keep'){kept=true;return {};};return {...order,cards:[{...order.cards[0],disposition:kept?'kept':'vaulted'}]};};
+ await createGachaController(f.ports).load(order.id);
+ assert.equal(f.ports.storage.getItem('gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain])),null);
+ await (createGachaController(f.ports).keep as any)(order.cards[0].skuId,order.id);
+ assert.ok(f.calls.includes('keep'));assert.ok(!f.calls.includes('create'));assert.ok(!f.calls.includes('payment'));
+});
+test("historical decision cannot replace another order's saved consent",async()=>{
+ const f=setup();
+ await assert.rejects((createGachaController(f.ports).keep as any)(order.cards[0].skuId,'b'.repeat(64)),/pending_order_exists/);
+ assert.ok(!f.calls.includes('keep'));
+});
+
+test("explicit historical Sell requests only sellback consent and preserves other orders",async()=>{
+ const f=setup(null);let sold=false;const signed:string[]=[];
+ f.ports.signQuote=async(transaction:string)=>{signed.push(transaction);return 'c2lnbmVk';};
+ f.ports.call=async(op:string)=>{
+   f.calls.push(op);
+   if(op==='sellbackPrepare')return {intentId:'11111111-1111-4111-8111-111111111111',transaction:'sellback-quote'};
+   if(op==='sellbackSubmit'){sold=true;return {};}
+   assert.equal(op,'read');return {...order,cards:[{...order.cards[0],disposition:sold?'sold':'vaulted'}]};
+ };
+ await createGachaController(f.ports).sell([order.cards[0].skuId],order.id);
+ assert.deepEqual(signed,['sellback-quote']);
+ assert.ok(!f.calls.includes('create'));assert.ok(!f.calls.includes('payment'));
+ const other=setup();const key='gacha-lab:'+JSON.stringify([scope.environment,scope.partnerId,scope.wallet,scope.chain]);
+ const original=other.ports.storage.getItem(key);
+ await assert.rejects(createGachaController(other.ports).sell([order.cards[0].skuId],'b'.repeat(64)),/pending_order_exists/);
+ const retained=JSON.parse(other.ports.storage.getItem(key));
+ assert.deepEqual(retained.pending ?? retained,JSON.parse(original));assert.deepEqual(other.calls,[]);
+});
+
+
+test('expired payment quote is refreshed on the same order before wallet approval', async () => {
+ const f=setup(null);let nonce='',signs=0;const payment={intentId:'11111111-1111-4111-8111-111111111111',transaction:'old-quote',lastValidBlockHeight:110};
+ f.ports.call=async(op:string,_params:any,body:any)=>{f.calls.push(op);if(op==='create'){nonce=body.clientNonce;return {...order,clientNonce:nonce,state:'awaiting_payment',paymentSignature:null,payment};}if(op==='payment')return {...payment,transaction:'fresh-quote',lastValidBlockHeight:250};if(op==='submit'){assert.equal(body.transaction,'c2lnbmVkZnJlc2g=');return {...order,clientNonce:nonce};}throw Error('unexpected '+op);};
+ f.ports.signQuote=async(transaction:string,_s:any,height:number)=>{signs++;if(transaction==='old-quote'){assert.equal(height,110);throw Error('quote_expired');}assert.equal(height,250);return 'c2lnbmVkZnJlc2g=';};
+ await createGachaController(f.ports).open({packId:'pack',quantity:1});assert.equal(signs,2);assert.deepEqual(f.calls,['create','payment','submit']);
+});
+
+
+test('sellback expiry reconciles before requesting one renewed wallet approval', async()=>{
+ const f=setup();let submits=0,quotes=0,signs=0;
+ f.ports.call=async(op:string,_params:any,body:any)=>{f.calls.push(op);if(op==='read')return submits>=2?{...order,cards:[{...order.cards[0],disposition:'sold'}]}:order;if(op==='sellbackPrepare'){quotes++;return {intentId:'11111111-1111-4111-8111-111111111111',transaction:'quote',lastValidBlockHeight:250};}if(op==='sellbackSubmit'){if(++submits===1)throw Error('buyback_expired');return {accepted:true};}throw Error('unexpected '+op);};
+ f.ports.signQuote=async()=>{signs++;return 'c2lnbmVk';};
+ const result=await createGachaController(f.ports).sell([order.cards[0].skuId]);assert.equal(result.cards[0].disposition,'sold');assert.equal(quotes,2);assert.equal(signs,2);assert.deepEqual(f.calls,['read','sellbackPrepare','sellbackSubmit','read','sellbackPrepare','sellbackSubmit','read']);
+});
+
+test('payment accepted during quote preparation is reconciled without another wallet prompt',async()=>{
+ const f=setup();let reads=0;
+ f.ports.call=async(op:string)=>{f.calls.push(op);if(op==='read')return ++reads===1?{...order,state:'awaiting_payment',paymentSignature:null}:order;if(op==='payment')throw Error('opening_payment_received');throw Error('unexpected '+op);};
+ f.ports.signQuote=async()=>{throw Error('must not prompt');};
+ assert.equal((await createGachaController(f.ports).resume()).state,'complete');assert.deepEqual(f.calls,['read','payment','read']);
 });

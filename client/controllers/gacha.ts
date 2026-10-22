@@ -30,7 +30,7 @@ export type GachaPorts = {
     body?: Record<string, unknown>,
     signal?: AbortSignal,
   ) => Promise<any>;
-  signQuote: (transaction: string, scope: Scope) => Promise<string>;
+  signQuote: (transaction: string, scope: Scope, lastValidBlockHeight?: number) => Promise<string>;
   accept: (order: any) => void;
   progress: (text: string) => void;
   canOpen: (packId: string, quantity: number) => boolean;
@@ -42,6 +42,25 @@ export type GachaPorts = {
 
 export function createGachaController(p: GachaPorts) {
   let active: AbortController | undefined;
+
+  async function approve(raw: any, refresh: () => Promise<any>, s: Scope, check: () => void, orderId: string, kind: "payment" | "sellback", skuIds: string[] = []) {
+    for (let attempt = 0; ; attempt++) {
+      const q = bindQuote(raw, s, orderId, kind, skuIds);
+      check();
+      try {
+        p.progress("Approve " + kind + " in your wallet");
+        const signed = await p.signQuote(q.transaction, s, q.lastValidBlockHeight);
+        check();
+        return {q, signed};
+      } catch (error) {
+        check();
+        if (!(error instanceof Error) || error.message !== "quote_expired" || attempt >= 2) throw error;
+        p.progress("Refreshing your " + kind + " quote before wallet approval…");
+        raw = await refresh();
+        check();
+      }
+    }
+  }
 
   async function run<T>(
     work: (
@@ -148,10 +167,11 @@ export function createGachaController(p: GachaPorts) {
     let pending = get();
     if (!pending) throw new Error("saved_order_missing");
     let order: any;
+    let freshPayment: any;
 
     if (pending.orderId) order = await read();
     else {
-      p.progress("Restoring the original order…");
+      p.progress("Preparing your opening…");
       order = await request(
         "create",
         {},
@@ -161,12 +181,14 @@ export function createGachaController(p: GachaPorts) {
           packId: pending.packId,
           quantity: pending.quantity,
           clientNonce: pending.clientNonce,
+          preparePayment: true,
         },
       );
       check();
       save(mergeOrder(pending, order, s));
       recordOrder(s, order, p.storage);
       p.accept(order);
+      freshPayment = order.payment;
     }
 
     while (order.state !== "complete") {
@@ -182,22 +204,29 @@ export function createGachaController(p: GachaPorts) {
         !order.paymentSignature
       ) {
         if (!pending.signedTransaction) {
+          try {
           p.progress("Approve payment in your wallet");
-          const raw = await request(
+          const raw = freshPayment ?? await request(
             "payment",
             { id: order.id },
             { wallet: s.wallet },
           );
-          const q = bindQuote(raw, s, order.id, "payment");
-          check();
-          const signed = await p.signQuote(q.transaction, s);
-          check();
+          freshPayment = undefined;
+          const {q, signed} = await approve(raw, () => request("payment", {id:order.id}, {wallet:s.wallet}), s, check, order.id, "payment");
           pending = {
             ...get()!,
             intentId: q.intentId,
             signedTransaction: signed,
           };
           save(pending);
+          } catch (error) {
+            check();
+            if (!(error instanceof Error) || !["opening_payment_received", "opening_expired"].includes(error.message)) throw error;
+            order = await read();
+            if (order.state === "awaiting_payment" && !order.hasSignedPayment && !order.paymentSignature) throw error;
+            freshPayment = undefined;
+            continue;
+          }
         }
 
         p.progress("Submitting saved payment…");
@@ -226,17 +255,36 @@ export function createGachaController(p: GachaPorts) {
 
         // Read authoritative state before any retransmission of the same consent.
 
-        order = await read();
+        if (order.state !== "complete") order = await read();
         if (order.state === "complete") break;
       }
 
-      p.progress("Waiting for payment and fulfilment confirmation…");
+      p.progress(order.paymentSignature
+        ? "Payment received. Preparing your cards…"
+        : "Payment submitted. Confirming your payment…");
       await poll();
       order = await read();
     }
 
     p.progress("Cards revealed. Payment evidence received.");
     return order;
+  }
+
+  // Loading history stays read-only. A deliberate card decision can restore a
+  // completed purchase, under the same lock, without inventing payment consent.
+  async function restoreDecisionOrder(
+    id: string | undefined, s: Scope, check: () => void,
+    request: GachaPorts["call"], get: () => Pending | null,
+    save: (v: Pending) => void,
+  ) {
+    if (!id || get()?.orderId === id) return;
+    if (get()) throw new Error("pending_order_exists");
+    if (!/^[a-f0-9]{64}$/.test(id)) throw new Error("invalid_order_id");
+    const order = validateOrder(await request("read", { id, wallet: s.wallet }), s);
+    check();
+    if (order.id !== id || order.state !== "complete")
+      throw new Error("card_not_decidable");
+    save(mergeOrder(null, order, s));
   }
 
   return {
@@ -286,8 +334,9 @@ export function createGachaController(p: GachaPorts) {
         removeResolvedConsent(s, pending, order, p.storage);
       }),
 
-    keep: (skuId: string) =>
-      run(async (s, check, request, read) => {
+    keep: (skuId: string, orderId?: string) =>
+      run(async (s, check, request, read, get, save) => {
+        await restoreDecisionOrder(orderId, s, check, request, get, save);
         const order = await read();
         if (
           order.state !== "complete" ||
@@ -302,11 +351,20 @@ export function createGachaController(p: GachaPorts) {
         return read();
       }),
 
-    sell: (skuIds: string[]) =>
+    sell: (skuIds: string[], orderId?: string) =>
       run(async (s, check, request, read, get, save, poll) => {
+        await restoreDecisionOrder(orderId, s, check, request, get, save);
         const savedSelection = get()?.sellback?.skuIds;
         let order = await read(),
           pending = get()!;
+        let expiredRenewals = 0;
+        const prepareConsent = async () => {
+          const raw = await request("sellbackPrepare", {id:order.id}, {wallet:s.wallet,skuIds});
+          p.progress("Approve sellback in your wallet");
+          const {q, signed} = await approve(raw, () => request("sellbackPrepare", {id:order.id}, {wallet:s.wallet,skuIds}), s, check, order.id, "sellback", skuIds);
+          pending = {...get()!, sellback:{intentId:q.intentId,transaction:signed,skuIds:[...skuIds]}};
+          save(pending);
+        };
         if (
           savedSelection &&
           savedSelection.every((id) =>
@@ -334,23 +392,7 @@ export function createGachaController(p: GachaPorts) {
             )
           )
             throw new Error("sellback_selection_invalid");
-          const raw = await request(
-            "sellbackPrepare",
-            { id: order.id },
-            { wallet: s.wallet, skuIds },
-          );
-          const q = bindQuote(raw, s, order.id, "sellback", skuIds);
-          const signed = await p.signQuote(q.transaction, s);
-          check();
-          pending = {
-            ...get()!,
-            sellback: {
-              intentId: q.intentId,
-              transaction: signed,
-              skuIds: [...skuIds],
-            },
-          };
-          save(pending);
+          await prepareConsent();
         }
 
         while (true) {
@@ -364,7 +406,8 @@ export function createGachaController(p: GachaPorts) {
                   skuIds.includes(c.skuId) &&
                   c.disposition === "buyback_pending",
               )
-            )
+            ) {
+              p.progress("Submitting your sellback…");
               await p.call(
                 "sellbackSubmit",
                 { id: pending.orderId! },
@@ -375,12 +418,22 @@ export function createGachaController(p: GachaPorts) {
                 },
                 active!.signal,
               );
+              p.progress("Sellback submitted. Confirming your payout…");
+            }
           } catch (e) {
             check();
             if (e instanceof Error && e.message === "buyback_expired") {
               const reconciled = await recoverExpiredSellback(pending, e, read);
               save(reconciled.pending);
-              if (reconciled.order) p.accept(reconciled.order);
+              if (reconciled.order) {
+                order = reconciled.order;
+                p.accept(order);
+                if (expiredRenewals++ < 1) {
+                  p.progress("The quote expired. Requesting a fresh sellback approval…");
+                  await prepareConsent();
+                  continue;
+                }
+              }
               throw e;
             }
             if (!normalizeError(e, true).retryable) throw e;
@@ -401,7 +454,7 @@ export function createGachaController(p: GachaPorts) {
             )
           )
             throw new Error("sellback_card_conflict");
-          p.progress("Sellback submitted. Waiting for collector credit…");
+          p.progress("Sellback submitted. Confirming your payout…");
           await poll();
           order = await read();
         }
@@ -411,3 +464,4 @@ export function createGachaController(p: GachaPorts) {
     },
   };
 }
+
